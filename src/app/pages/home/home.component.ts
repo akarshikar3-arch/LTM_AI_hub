@@ -43,7 +43,7 @@ import { AgentCategory } from '../../core/models/agent.model';
       <!-- Filter pills -->
       <div class="pill-group fade-up-2">
         <button class="pill" [class.active]="activeCat() === 'All'" (click)="setCat('All')">All</button>
-        <button class="pill" [class.active]="activeCat() === 'IT & Platforms'" (click)="setCat('IT & Platforms')">IT & Platforms</button>
+        <button class="pill" [class.active]="activeCat() === 'Business Usecase'" (click)="setCat('Business Usecase')">Business Usecase</button>
         <button class="pill" [class.active]="activeCat() === 'Enterprise'" (click)="setCat('Enterprise')">Enterprise</button>
       </div>
 
@@ -220,6 +220,7 @@ import { AgentCategory } from '../../core/models/agent.model';
     .ic-teal  { background: var(--ic-teal); }
 
     .sec { margin-bottom: 32px; }
+
   `]
 })
 export class HomeComponent {
@@ -227,6 +228,6 @@ export class HomeComponent {
   readonly filteredAgents = computed(() =>
     this.agentService.filterBy(this.activeCat(), 'all', '')
   );
-  constructor(readonly agentService: AgentService) {}
+  constructor(readonly agentService: AgentService) { }
   setCat(c: AgentCategory | 'All') { this.activeCat.set(c); }
 }

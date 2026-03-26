@@ -1,5 +1,5 @@
 export type AgentStatus = 'live' | 'beta' | 'coming-soon';
-export type AgentCategory = 'IT & Platforms' | 'Enterprise' 
+export type AgentCategory = 'Business Usecase' | 'Enterprise' 
 export type ThreadType = 'personal' | 'shared';
 
 export interface Agent {
@@ -25,6 +25,17 @@ export interface Agent {
     shared: Message[];
   };
   chatHistory_history: HistoryEntry[];
+  supportContacts?: SupportContact[];
+  createdBy?: {
+    initials: string;
+    name: string;
+    role: string;
+  };
+  downloadAssets?: {
+    name: string;
+    meta: string;
+    type: string;
+  }[];
 }
 
 export interface Message {
@@ -42,3 +53,17 @@ export interface HistoryEntry {
   time: string;
   isShared: boolean;
 }
+
+export interface SupportContact {
+  initials: string;
+  name: string;
+  title: string;
+  email: string;
+  teamsHandle: string;
+  avatarColor: 'teal' | 'amber' | 'blue';
+}
+
+
+
+
+

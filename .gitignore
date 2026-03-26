@@ -7,7 +7,7 @@ node_modules/
 dist/
 tmp/
 out-tsc/
-bazel-out/
+bazel-out/``
 
 # Angular cache
 .angular/

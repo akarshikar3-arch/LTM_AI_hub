@@ -1,18 +1,20 @@
 import { Component, signal, computed, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AgentService } from '../../core/services/agent.service';
 import { AgentCardComponent } from '../../shared/components/agent-card/agent-card.component';
+import { AgentActionButtonsComponent } from './agent-action-buttons.component';
 import { AgentCategory } from '../../core/models/agent.model';
 
 @Component({
   selector: 'app-agents',
   standalone: true,
-  imports: [AgentCardComponent],
+  imports: [CommonModule, AgentCardComponent, AgentActionButtonsComponent],
   template: `
     <div class="agents-page">
       <div class="pill-group fade-up">
         <button class="pill" [class.active]="cat() === 'All'" (click)="setCat('All')">All</button>
-        <button class="pill" [class.active]="cat() === 'IT & Platforms'" (click)="setCat('IT & Platforms')">IT & Platforms</button>
+        <button class="pill" [class.active]="cat() === 'Business Usecase'" (click)="setCat('Business Usecase')">Business Usecase</button>
         <button class="pill" [class.active]="cat() === 'Enterprise'" (click)="setCat('Enterprise')">Enterprise</button>
       </div>
       <div class="pill-group" style="margin-top:-12px">

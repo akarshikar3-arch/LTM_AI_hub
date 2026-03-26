@@ -127,3 +127,17 @@ body {
     }
   }
 }
+:root {
+  /* Alias layer so components using --color-* work with your Chevron theme */
+
+  --color-background-primary: var(--surface);
+  --color-background-secondary: var(--surface-3);
+  --color-background-tertiary: var(--surface-4);
+  --color-background-info: var(--ic-blue);
+
+  --color-border-secondary: var(--border-s);
+  --color-border-tertiary: var(--border);
+
+  --color-text-primary: var(--t1);
+  --color-text-secondary: var(--t4);
+}

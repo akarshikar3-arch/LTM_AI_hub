@@ -89,8 +89,8 @@ import { AgentService } from '../../core/services/agent.service';
  
         <a routerLink="/agents" [queryParams]="{category: 'IT & Platforms'}" class="nav-item cat">
           <span class="nav-icon cat-icon ic-blue">🔧</span>
-          <span>Business Testcase</span>
-          <span class="nav-badge">2</span>
+          <span>Business Usecase</span>
+          <span class="nav-badge">42</span>
         </a>
         <a routerLink="/agents" [queryParams]="{category: 'Enterprise'}" class="nav-item cat">
           <span class="nav-icon cat-icon ic-amber">📊</span>
@@ -100,8 +100,7 @@ import { AgentService } from '../../core/services/agent.service';
  
       </nav>
  
-     
- 
+    
     </aside>
   `,
   styles: [`
