@@ -1,7 +1,7 @@
 export type AgentStatus = 'live' | 'beta' | 'coming-soon';
-export type AgentCategory = 'Business Usecase' | 'Enterprise' 
+export type AgentCategory = 'Business Usecase' | 'Enterprise' |'Data';
 export type ThreadType = 'personal' | 'shared';
-
+ 
 export interface Agent {
   id: number;
   name: string;
@@ -14,6 +14,9 @@ export interface Agent {
   tagline: string;
   description: string;
   fullDescription: string;
+  
+  externalUrl?: string;        
+
   runsPerMonth: number;
   hoursSaved: number;
   activityPct: number;
@@ -37,7 +40,7 @@ export interface Agent {
     type: string;
   }[];
 }
-
+ 
 export interface Message {
   role: 'user' | 'ai';
   content: string;
@@ -45,7 +48,7 @@ export interface Message {
   author?: string;
   files?: string[];
 }
-
+ 
 export interface HistoryEntry {
   id: string;
   title: string;
@@ -53,7 +56,7 @@ export interface HistoryEntry {
   time: string;
   isShared: boolean;
 }
-
+ 
 export interface SupportContact {
   initials: string;
   name: string;
@@ -62,8 +65,9 @@ export interface SupportContact {
   teamsHandle: string;
   avatarColor: 'teal' | 'amber' | 'blue';
 }
+ 
+ 
+ 
+ 
 
-
-
-
-
+ 

@@ -7,9 +7,10 @@ import { CopilotDirectLineService } from 'src/app/core/services/copilot-directli
 import { LayoutService } from 'src/app/core/services/layout.service';
 import { AiService } from 'src/app/core/services/ai.service';
 import { AgentApiService } from '../../core/services/agent-api.service';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+
 
 const AGENT_SYSTEM_PROMPTS: Record<number, string> = {
   1: `You are ServiceNow Assistant, an intelligent IT service desk AI for Chevron. You help employees raise IT incidents, track tickets, request software access, and answer IT policy questions. You integrate with Chevron's ServiceNow instance. Be concise, professional, and always provide ticket numbers (format: INC04XXXXX) and priorities (P1-P4) when raising incidents. Use **bold** for key info.`,
@@ -53,57 +54,58 @@ function getNextResponse(agentId: number): string {
   imports: [RouterLink, FormsModule],
   encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="chat-outer">
-      <div class="history-sidebar" [class.collapsed]="sidebarCollapsed()">
-        <div class="hs-header">
-          @if (!sidebarCollapsed()) { <span class="hs-title">Chat History</span> }
-          <button class="hs-toggle" (click)="toggleSidebar()" [title]="sidebarCollapsed() ? 'Expand' : 'Collapse'">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              @if (sidebarCollapsed()) {
-                <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              } @else {
-                <path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              }
-            </svg>
-          </button>
-        </div>
-        @if (!sidebarCollapsed()) {
-          <div class="hs-tabs">
-            <button class="hs-tab" [class.active]="thread() === 'personal'" (click)="setThread('personal')">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 13c0-2.2 2.7-4 6-4s6 1.8 6 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              My Chats
-            </button>
-            <button class="hs-tab" [class.active]="thread() === 'shared'" (click)="setThread('shared')">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 13c0-2 1.8-3 4-3h6c2.2 0 4 1 4 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-              Team
-            </button>
-          </div>
-          <div class="hs-list">
-            @if (agent()?.chatHistory_history?.length) {
-              @for (h of agent()!.chatHistory_history; track h.id; let i = $index) {
-                <div class="hs-item" [class.active]="i === activeHistoryIdx()" (click)="activeHistoryIdx.set(i)">
-                  <div class="hs-item-icon" [class]="agent()!.colorClass">{{ agent()!.icon }}</div>
-                  <div class="hs-item-body">
-                    <div class="hs-item-title">{{ h.title }}</div>
-                    <div class="hs-item-preview">{{ h.preview }}</div>
-                    <div class="hs-item-meta">
-                      <span>{{ h.time }}</span>
-                      @if (h.isShared) { <span class="hs-team-tag">Team</span> }
-                    </div>
-                  </div>
+<div class="chat-outer">
+  <div class="history-sidebar" [class.collapsed]="sidebarCollapsed()" [hidden]="safeExternalUrl()">
+    <div class="hs-header">
+      @if (!sidebarCollapsed()) { <span class="hs-title">Chat History</span> }
+      <button class="hs-toggle" (click)="toggleSidebar()" [title]="sidebarCollapsed() ? 'Expand' : 'Collapse'">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          @if (sidebarCollapsed()) {
+            <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          } @else {
+            <path d="M10 3l-5 5 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          }
+        </svg>
+      </button>
+    </div>
+    @if (!sidebarCollapsed()) {
+      <div class="hs-tabs">
+        <button class="hs-tab" [class.active]="thread() === 'personal'" (click)="setThread('personal')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 13c0-2.2 2.7-4 6-4s6 1.8 6 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          My Chats
+        </button>
+        <button class="hs-tab" [class.active]="thread() === 'shared'" (click)="setThread('shared')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M1 13c0-2 1.8-3 4-3h6c2.2 0 4 1 4 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          Team
+        </button>
+      </div>
+      <div class="hs-list">
+        @if (agent()?.chatHistory_history?.length) {
+          @for (h of agent()!.chatHistory_history; track h.id; let i = $index) {
+            <div class="hs-item" [class.active]="i === activeHistoryIdx()" (click)="activeHistoryIdx.set(i)">
+              <div class="hs-item-icon" [class]="agent()!.colorClass">{{ agent()!.icon }}</div>
+              <div class="hs-item-body">
+                <div class="hs-item-title">{{ h.title }}</div>
+                <div class="hs-item-preview">{{ h.preview }}</div>
+                <div class="hs-item-meta">
+                  <span>{{ h.time }}</span>
+                  @if (h.isShared) { <span class="hs-team-tag">Team</span> }
                 </div>
-              }
-            } @else {
-              <div class="hs-empty">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span>No history yet</span>
-                <span class="hs-empty-sub">Start chatting to see history here</span>
               </div>
-            }
+            </div>
+          }
+        } @else {
+          <div class="hs-empty">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>No history yet</span>
+            <span class="hs-empty-sub">Start chatting to see history here</span>
           </div>
         }
       </div>
+    }
+  </div>
 
+  
       <div class="chat-layout">
         <header class="chat-header">
           <button class="global-nav-btn" (click)="toggleGlobalSidebar()" aria-label="Open menu" title="Open menu">
@@ -142,6 +144,17 @@ function getNextResponse(agentId: number): string {
             </button>
           </div>
         </header>
+
+
+        
+ @if (safeExternalUrl()) {
+          <iframe
+            [src]="safeExternalUrl()"
+            class="agent-iframe"
+            frameborder="0"
+            allow="clipboard-write; clipboard-read">
+          </iframe>
+        } @else {
 
         <div class="chat-body">
           <div class="messages-area">
@@ -249,6 +262,7 @@ function getNextResponse(agentId: number): string {
             <span>Enter to send \u00b7 Shift+Enter for new line</span>
           </div>
         </div>
+}
       </div>
     </div>
   `,
@@ -433,7 +447,10 @@ function getNextResponse(agentId: number): string {
     .cr-sev-warning{background:#ea580c}
 .cr-sev-info{background:#2563eb}
     .msg-bubble.user-bubble { background: #e23825 !important; color: white !important; border: none !important; border-bottom-right-radius: 4px !important; box-shadow: 0 4px 16px rgba(232,25,44,.18) !important; }
-  `]
+
+.msg-bubble.user-bubble { background: #e23825 !important; color: white !important; border: none !important; border-bottom-right-radius: 4px !important; box-shadow: 0 4px 16px rgba(232,25,44,.18) !important; }
+    .agent-iframe { width: 100%; flex: 1; border: none; background: #fff; }
+   `]
 
 })
 export class ChatComponent implements OnInit, AfterViewChecked {
@@ -463,6 +480,13 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     if (!a) return [];
     return a.chatHistory[this.thread()];
   });
+  readonly safeExternalUrl = computed(() => {
+  const a = this.agent();
+  if (a?.externalUrl) {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(a.externalUrl);
+  }
+  return null;
+});
 
   get canSend(): boolean {
     return this.inputText.trim().length > 0 || this.attachedFiles().length > 0;
@@ -562,6 +586,8 @@ async ngOnInit() {
     this.route.params.subscribe(async p => {
       const id = parseInt(p['id'], 10);
       this.agentId.set(id);
+      
+
       if (!this.agentSvc.getAgentById(id)) { this.router.navigate(['/home']); return; }
       if (id === this.LIVE_AGENT_ID) {
         try {

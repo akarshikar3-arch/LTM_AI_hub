@@ -1,9 +1,9 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Agent, Message, ThreadType } from '../models/agent.model';
-
+ 
 @Injectable({ providedIn: 'root' })
 export class AgentService {
-
+ 
   private readonly _agents = signal<Agent[]>([
     {
       id: 1,
@@ -493,46 +493,23 @@ export class AgentService {
       chatHistory_history: []
     },
     {
-      id: 17,
-      name: 'Data Cleaning Check Agent',
-      team: 'Business Usecase',
-      category: 'Business Usecase',
-      icon: '🧹',
-      colorClass: 'ic-teal',
-      status: 'coming-soon',
-      model: 'Azure OpenAI',
-      tagline: 'AI-powered data quality and cleaning validation',
-      description: 'Automatically detect data quality issues, anomalies, duplicates and inconsistencies across datasets and suggest fixes.',
-      fullDescription: 'Scans datasets to identify quality issues including missing values, duplicates, format inconsistencies, outliers and referential integrity violations. Generates data quality reports and automated cleaning scripts.',
-      runsPerMonth: 0,
-      hoursSaved: 0,
-      activityPct: 0,
-      isFavorite: false,
-      lastUsed: undefined,
-      samplePrompts: [
-        'Check this dataset for quality issues',
-        'Find duplicate records in this table',
-        'Identify missing values and suggest fixes',
-        'Generate a data cleaning script for this dataset'
-      ],
-      chatHistory: { personal: [], shared: [] },
-      chatHistory_history: []
-    },
-    {
       id: 18,
       name: 'Data Analysis Agent',
-      team: 'Business Usecase',
-      category: 'Business Usecase',
+      team: 'Data',
+      category: 'Data',
       icon: '📈',
       colorClass: 'ic-amber',
-      status: 'coming-soon',
-      model: 'Azure OpenAI',
+      status: 'live',
+      
+model: 'Azure OpenAI',
       tagline: 'AI analysis for structured and unstructured data',
       description: 'Perform deep analysis on both structured (tables, databases) and unstructured (PDFs, emails, reports) data sources.',
       fullDescription: 'Combines structured query capabilities with unstructured document understanding to provide comprehensive data analysis. Extracts insights from tables, databases, PDFs, emails and reports in a unified conversation.',
-      runsPerMonth: 0,
-      hoursSaved: 0,
-      activityPct: 0,
+      externalUrl: 'https://black-stone-084c03600.7.azurestaticapps.net',  // ← ADD THIS LINE
+      runsPerMonth: 70,
+
+      hoursSaved: 80,
+      activityPct: 60,
       isFavorite: false,
       lastUsed: undefined,
       samplePrompts: [
@@ -540,6 +517,33 @@ export class AgentService {
         'Extract key insights from these reports',
         'Compare structured and unstructured data sources',
         'Identify patterns across these documents and tables'
+      ],
+      chatHistory: { personal: [], shared: [] },
+      chatHistory_history: []
+    },
+    {
+      id: 17,
+      name: 'Data Cleaning Agent',
+      team: 'Data',
+      category: 'Data',
+      icon: '🧹',
+      colorClass: 'ic-teal',
+      status: 'live',
+      model: 'Azure OpenAI',
+      tagline: 'AI-powered data quality and cleaning validation',
+      description: 'Automatically detect data quality issues, anomalies, duplicates and inconsistencies across datasets and suggest fixes.',
+      fullDescription: 'Scans datasets to identify quality issues including missing values, duplicates, format inconsistencies, outliers and referential integrity violations. Generates data quality reports and automated cleaning scripts.',
+      runsPerMonth: 35,
+      externalUrl: 'https://ashy-sea-0571c3900.7.azurestaticapps.net',
+      hoursSaved: 50,
+      activityPct: 80,
+      isFavorite: false,
+      lastUsed: undefined,
+      samplePrompts: [
+        'Check this dataset for quality issues',
+        'Find duplicate records in this table',
+        'Identify missing values and suggest fixes',
+        'Generate a data cleaning script for this dataset'
       ],
       chatHistory: { personal: [], shared: [] },
       chatHistory_history: []
@@ -1194,18 +1198,45 @@ export class AgentService {
       chatHistory: { personal: [], shared: [] },
       chatHistory_history: []
     },
+ 
+      {
+    id: 44,
+    name: 'Power BI Generation Agent',
+    team: 'Data',
+    category: 'Data',
+    icon: '📊',
+    colorClass: 'ic-blue',
+    status: 'live',
+    model: 'Azure OpenAI',
+    tagline: 'Auto-generate Power BI dashboards and reports',
+    description: 'Generate Power BI dashboards, DAX measures and data models from natural language descriptions and raw data sources.',
+    fullDescription: 'Converts natural language requirements into complete Power BI solutions including dashboard layouts, DAX measures, data model designs, relationships and visual recommendations. Supports automated report generation from CSV, SQL and API data sources.',
+    runsPerMonth: 50,
+    hoursSaved: 80,
+    activityPct: 75,
+    isFavorite: false,
+    lastUsed: undefined,
+    samplePrompts: [
+      'Generate a Power BI dashboard for monthly sales data',
+      'Create DAX measures for YoY revenue comparison',
+      'Design a data model for this dataset',
+      'Build a KPI report from this CSV file'
+    ],
+    chatHistory: { personal: [], shared: [] },
+    chatHistory_history: []
+  },
   ]);
-
+ 
   readonly agents = this._agents.asReadonly();
   readonly favorites = computed(() => this._agents().filter(a => a.isFavorite));
   readonly recentlyUsed = computed(() => this._agents().filter(a => a.lastUsed));
-
+ 
   toggleFavorite(id: number): void {
     this._agents.update(list =>
       list.map(a => a.id === id ? { ...a, isFavorite: !a.isFavorite } : a)
     );
   }
-
+ 
   filterBy(category: string, status: string, query: string): Agent[] {
     return this._agents().filter(a => {
       if (category !== 'All' && a.category !== category) return false;
@@ -1216,7 +1247,7 @@ export class AgentService {
       return true;
     });
   }
-
+ 
   addMessage(agentId: number, thread: ThreadType, msg: Message): void {
     this._agents.update(list =>
       list.map(a => {
@@ -1230,7 +1261,7 @@ export class AgentService {
       })
     );
   }
-
+ 
   clearChat(agentId: number, thread: ThreadType): void {
     this._agents.update(list =>
       list.map(a => {
@@ -1239,9 +1270,9 @@ export class AgentService {
       })
     );
   }
-
+ 
   getAgentById(id: number): Agent | undefined {
     return this._agents().find(a => a.id === id);
   }
 }
-
+ 

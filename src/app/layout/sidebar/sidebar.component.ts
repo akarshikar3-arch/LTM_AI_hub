@@ -331,18 +331,30 @@ export class SidebarComponent implements OnDestroy {
     private layout: LayoutService
   ) {
     // Detect /chat route and auto-close sidebar
-    this.subs.add(
-      this.router.events
-        .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-        .subscribe((e) => {
-          this.isChatRoute = e.urlAfterRedirects.startsWith('/chat');
+  this.subs.add(
+  this.router.events
+    .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+    .subscribe((e) => {
+      const url = e.urlAfterRedirects;
 
-          // Always close overlay on navigation
-          this.sidebarOpen = false;
-          this.layout.closeGlobalSidebar();
-          document.body.classList.remove('global-sidebar-open');
-        })
-    );
+      // Check if this is an external agent (like Data Analysis)
+      let isExternalAgent = false;
+      if (url.startsWith('/chat/')) {
+        const id = parseInt(url.split('/')[2], 10);
+        const agent = this.agentService.getAgentById(id);
+        isExternalAgent = !!agent?.externalUrl;
+      }
+
+      // External agents: sidebar stays visible like homepage
+      this.isChatRoute = url.startsWith('/chat') && !isExternalAgent;
+
+      if (!isExternalAgent) {
+        this.sidebarOpen = false;
+        this.layout.closeGlobalSidebar();
+        document.body.classList.remove('global-sidebar-open');
+      }
+    })
+);
 
     // Listen to topbar toggle (LayoutService)
     this.subs.add(

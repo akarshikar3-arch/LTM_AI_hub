@@ -4,14 +4,14 @@ import { DecimalPipe } from '@angular/common';
 import { AgentService } from '../../core/services/agent.service';
 import { AgentCardComponent } from '../../shared/components/agent-card/agent-card.component';
 import { AgentCategory } from '../../core/models/agent.model';
-
+ 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [RouterLink, AgentCardComponent, DecimalPipe],
   template: `
     <div class="home-page">
-
+ 
       <!-- Hero banner -->
       <div class="hero fade-up">
         <!-- Decorative bg chevron -->
@@ -39,14 +39,15 @@ import { AgentCategory } from '../../core/models/agent.model';
           </div>
         </div>
       </div>
-
+ 
       <!-- Filter pills -->
       <div class="pill-group fade-up-2">
         <button class="pill" [class.active]="activeCat() === 'All'" (click)="setCat('All')">All</button>
         <button class="pill" [class.active]="activeCat() === 'Business Usecase'" (click)="setCat('Business Usecase')">Business Usecase</button>
         <button class="pill" [class.active]="activeCat() === 'Enterprise'" (click)="setCat('Enterprise')">Enterprise</button>
+        <button class="pill" [class.active]="activeCat() === 'Data'" (click)="setCat('Data')">Data</button>
       </div>
-
+ 
       <!-- Pinned -->
       @if (agentService.favorites().length > 0) {
         <section class="sec fade-up-2">
@@ -67,7 +68,7 @@ import { AgentCategory } from '../../core/models/agent.model';
           </div>
         </section>
       }
-
+ 
       <!-- Recently used -->
       <section class="sec fade-up-3">
         <div class="sec-head">
@@ -86,7 +87,7 @@ import { AgentCategory } from '../../core/models/agent.model';
           }
         </div>
       </section>
-
+ 
       <!-- Agents grid -->
       <section class="sec fade-up-4">
         <div class="sec-head">
@@ -100,12 +101,12 @@ import { AgentCategory } from '../../core/models/agent.model';
           }
         </div>
       </section>
-
+ 
     </div>
   `,
   styles: [`
     .home-page { padding: 28px 32px 64px; }
-
+ 
     /* Hero */
     .hero {
       background: linear-gradient(130deg, var(--chev-blue-dd) 0%, var(--chev-blue) 55%, var(--chev-blue-lt) 100%);
@@ -171,7 +172,7 @@ import { AgentCategory } from '../../core/models/agent.model';
       color: white; letter-spacing: -1px; line-height: 1; margin-bottom: 5px;
     }
     .hero-stat-lbl { font-size: 9px; font-weight: 600; color: rgba(255,255,255,.38); text-transform: uppercase; letter-spacing: .5px; }
-
+ 
     /* Pinned */
     .pinned-row { display: flex; gap: 10px; flex-wrap: wrap; }
     .pin-card {
@@ -196,7 +197,7 @@ import { AgentCategory } from '../../core/models/agent.model';
     .pin-meta { font-size: 11px; color: var(--t4); margin-top: 2px; }
     .pin-arrow { font-size: 16px; color: var(--chev-blue); opacity: .4; margin-left: auto; flex-shrink: 0; }
     .pin-card:hover .pin-arrow { opacity: 1; }
-
+ 
     /* Recent */
     .recent-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
     .recent-row::-webkit-scrollbar { display: none; }
@@ -211,16 +212,16 @@ import { AgentCategory } from '../../core/models/agent.model';
     .rc-icon { width: 28px; height: 28px; border-radius: 7px; display:flex; align-items:center; justify-content:center; font-size:14px; }
     .rc-name { font-size: 13px; font-weight: 500; color: var(--t1); }
     .rc-time { font-size: 11px; color: var(--t4); margin-top: 1px; }
-
+ 
     /* Grid */
     .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
-
+ 
     .ic-blue  { background: var(--ic-blue); }
     .ic-amber { background: var(--ic-amber); }
     .ic-teal  { background: var(--ic-teal); }
-
+ 
     .sec { margin-bottom: 32px; }
-
+ 
   `]
 })
 export class HomeComponent {
@@ -231,3 +232,7 @@ export class HomeComponent {
   constructor(readonly agentService: AgentService) { }
   setCat(c: AgentCategory | 'All') { this.activeCat.set(c); }
 }
+ 
+ 
+
+ 
