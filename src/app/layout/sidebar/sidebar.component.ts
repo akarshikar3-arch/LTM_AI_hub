@@ -1,18 +1,28 @@
-import { Component, computed } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, OnDestroy } from '@angular/core';
+import { Router, NavigationEnd, Event, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { AgentService } from '../../core/services/agent.service';
- 
+import { LayoutService } from '../../core/services/layout.service';
+
 @Component({
   selector: 'app-sidebar',
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <aside class="sidebar">
- 
+    <!-- Backdrop only on /chat when sidebar is open -->
+    @if (isChatRoute && sidebarOpen) {
+      <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
+    }
+
+    <aside
+      class="sidebar"
+      [class.chat-mode]="isChatRoute"
+      [class.open]="sidebarOpen"
+    >
+
       <!-- Logo -->
       <div class="sidebar-logo">
         <div class="logo-inner">
-          <!-- LTM mark: blue LTM on top, red LTM on bottom -->
           <img src="assets/LTM_logo.png" alt="Logo" class="logo-mark"/>
           <div class="logo-text">
             <span class="logo-name"></span>
@@ -21,12 +31,12 @@ import { AgentService } from '../../core/services/agent.service';
         </div>
         <div class="logo-accent-bar"></div>
       </div>
- 
+
       <!-- Nav -->
-      <nav class="sidebar-nav">
- 
+      <nav class="sidebar-nav" (click)="closeOnChatNavClick()">
+
         <div class="nav-section-label">Workspace</div>
- 
+
         <a routerLink="/home" routerLinkActive="active" class="nav-item">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -38,7 +48,7 @@ import { AgentService } from '../../core/services/agent.service';
           </span>
           <span>Home</span>
         </a>
- 
+
         <a routerLink="/agents" routerLinkActive="active" class="nav-item">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -49,17 +59,18 @@ import { AgentService } from '../../core/services/agent.service';
           <span>All Agents</span>
           <span class="nav-badge">{{ agentService.agents().length }}</span>
         </a>
- 
+
         <a routerLink="/favorites" routerLinkActive="active" class="nav-item">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 13.5S2 9.8 2 5.5A3.5 3.5 0 0 1 8 3.2 3.5 3.5 0 0 1 14 5.5c0 4.3-6 8-6 8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M8 13.5S2 9.8 2 5.5A3.5 3.5 0 0 1 8 3.2 3.5 3.5 0 0 1 14 5.5c0 4.3-6 8-6 8z"
+                stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
           </span>
           <span>Favorites</span>
           <span class="nav-badge fav" [class.has-items]="favCount() > 0">{{ favCount() }}</span>
         </a>
- 
+
         <a routerLink="/stats" routerLinkActive="active" class="nav-item">
           <span class="nav-icon">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -70,10 +81,10 @@ import { AgentService } from '../../core/services/agent.service';
           </span>
           <span>Usage Stats</span>
         </a>
- 
+
         <div class="nav-divider"></div>
         <div class="nav-section-label">Recent Chats</div>
- 
+
         @for (agent of agentService.recentlyUsed(); track agent.id) {
           <a [routerLink]="['/chat', agent.id]" routerLinkActive="active" class="nav-agent">
             <div class="nav-agent-icon" [class]="agent.colorClass">{{ agent.icon }}</div>
@@ -83,27 +94,27 @@ import { AgentService } from '../../core/services/agent.service';
             }
           </a>
         }
- 
+
         <div class="nav-divider"></div>
         <div class="nav-section-label">Categories</div>
- 
+
         <a routerLink="/agents" [queryParams]="{category: 'IT & Platforms'}" class="nav-item cat">
           <span class="nav-icon cat-icon ic-blue">🔧</span>
           <span>Business Usecase</span>
           <span class="nav-badge">42</span>
         </a>
+
         <a routerLink="/agents" [queryParams]="{category: 'Enterprise'}" class="nav-item cat">
           <span class="nav-icon cat-icon ic-amber">📊</span>
           <span>Enterprise</span>
           <span class="nav-badge">1</span>
         </a>
- 
+
       </nav>
- 
-    
     </aside>
   `,
   styles: [`
+    /* Base sidebar (normal pages) */
     .sidebar {
       width: var(--nav-w);
       flex-shrink: 0;
@@ -114,7 +125,9 @@ import { AgentService } from '../../core/services/agent.service';
       position: relative;
       z-index: 100;
       overflow: hidden;
+      transition: transform 0.28s ease;
     }
+
     .sidebar::after {
       content: '';
       position: absolute;
@@ -122,7 +135,31 @@ import { AgentService } from '../../core/services/agent.service';
       width: 1px; height: 100%;
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(200,0,30,.28) 60%, rgba(255,255,255,.04));
     }
- 
+
+    /* ✅ CHAT MODE: off-canvas overlay so chat can be full width */
+    .sidebar.chat-mode {
+      position: fixed; /* removes from layout flow */
+      left: 0;
+      top: 0;
+      height: 100vh;
+      transform: translateX(-105%); /* hidden by default */
+      box-shadow: 0 18px 45px rgba(0,0,0,.45);
+      border-right: 1px solid rgba(255,255,255,.08);
+      z-index: 1002;
+    }
+
+    .sidebar.chat-mode.open {
+      transform: translateX(0);
+    }
+
+    /* Backdrop behind sidebar when open */
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      z-index: 1001;
+    }
+
     /* Logo */
     .sidebar-logo {
       flex-shrink: 0;
@@ -161,7 +198,7 @@ import { AgentService } from '../../core/services/agent.service';
       height: 2px;
       background: linear-gradient(90deg, rgba(255,255,255,0), var(--chev-red) 45%, rgba(255,255,255,0));
     }
- 
+
     /* Nav */
     .sidebar-nav {
       flex: 1;
@@ -169,7 +206,7 @@ import { AgentService } from '../../core/services/agent.service';
       padding: 10px 10px;
     }
     .sidebar-nav::-webkit-scrollbar { display: none; }
- 
+
     .nav-section-label {
       font-size: 9px;
       font-weight: 700;
@@ -178,7 +215,7 @@ import { AgentService } from '../../core/services/agent.service';
       color: rgba(255, 255, 255, 0.8);
       padding: 12px 9px 5px;
     }
- 
+
     .nav-item {
       display: flex;
       align-items: center;
@@ -203,7 +240,7 @@ import { AgentService } from '../../core/services/agent.service';
     }
     .nav-item.active .nav-icon { color: #60AAEF; }
     .nav-item.cat { padding: 7px 10px; }
- 
+
     .nav-icon {
       width: 18px;
       display: flex;
@@ -220,7 +257,7 @@ import { AgentService } from '../../core/services/agent.service';
     .ic-blue  { background: rgba(0, 0, 0, 0.18); }
     .ic-amber { background: rgba(240,180,60,.18); }
     .ic-teal  { background: rgba(0, 0, 0, 0.18); }
- 
+
     .nav-badge {
       margin-left: auto;
       font-size: 10px; font-weight: 600;
@@ -232,7 +269,7 @@ import { AgentService } from '../../core/services/agent.service';
       background: rgba(200,0,30,.3);
       color: #ff8a9a;
     }
- 
+
     /* Agent rows */
     .nav-agent {
       display: flex;
@@ -267,18 +304,69 @@ import { AgentService } from '../../core/services/agent.service';
       flex-shrink: 0;
       animation: blink 2.5s ease-in-out infinite;
     }
- 
+
     .nav-divider {
       height: 1px;
       background: rgba(255,255,255,.07);
       margin: 6px 8px;
     }
- 
-   
+
+    @keyframes blink {
+      0%, 100% { opacity: .35; }
+      50% { opacity: 1; }
+    }
   `]
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnDestroy {
   readonly favCount = () => this.agentService.favorites().length;
-  constructor(readonly agentService: AgentService) { }
+
+  isChatRoute = false;
+  sidebarOpen = false;
+
+  private subs = new Subscription();
+
+  constructor(
+    readonly agentService: AgentService,
+    private router: Router,
+    private layout: LayoutService
+  ) {
+    // Detect /chat route and auto-close sidebar
+    this.subs.add(
+      this.router.events
+        .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+        .subscribe((e) => {
+          this.isChatRoute = e.urlAfterRedirects.startsWith('/chat');
+
+          // Always close overlay on navigation
+          this.sidebarOpen = false;
+          this.layout.closeGlobalSidebar();
+          document.body.classList.remove('global-sidebar-open');
+        })
+    );
+
+    // Listen to topbar toggle (LayoutService)
+    this.subs.add(
+      this.layout.globalSidebarOpen$.subscribe(open => {
+        this.sidebarOpen = open;
+
+        // Add body class so chat can shift when sidebar is open
+        if (open) document.body.classList.add('global-sidebar-open');
+        else document.body.classList.remove('global-sidebar-open');
+      })
+    );
+  }
+
+  closeSidebar() {
+    this.layout.closeGlobalSidebar();
+  }
+
+  closeOnChatNavClick() {
+    // In chat mode, clicking any nav item closes the overlay
+    if (this.isChatRoute) this.layout.closeGlobalSidebar();
+  }
+
+  ngOnDestroy() {
+    this.subs.unsubscribe();
+    document.body.classList.remove('global-sidebar-open');
+  }
 }
- 

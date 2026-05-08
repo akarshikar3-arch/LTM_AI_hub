@@ -46,7 +46,7 @@ import { FormsModule } from '@angular/forms';
               <div class="pd-av">AK</div>
               <div>
                 <div class="pd-name">Akarshika R</div>
-                <div class="pd-email">akarshika.r&#64;ltimindtree.com</div>
+                <div class="pd-email">Akarshika.R&#64;ltimindtree.com</div>
               </div>
             </div>
             <div class="pd-divider"></div>
