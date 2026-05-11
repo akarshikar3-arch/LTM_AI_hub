@@ -806,6 +806,20 @@ let codeFiles = tree.tree
     
     // ❌ Skip non-code files
     if (p.includes('node_modules/')) return false;
+    if (p.includes('dist/')) return false;
+    // ✅ NEW: SKIP docs/scripts/examples (avoid false positives)
+if (
+  p.includes('docs/') ||
+  p.includes('scripts/') ||
+  p.includes('examples/') ||
+  p.includes('demo/') ||
+  p.includes('benchmarks/') ||
+  p.includes('test/')
+) return false;
+if (p.includes('build/')) return false;
+if (p.includes('out/')) return false;
+if (p.includes('coverage/')) return false;
+if (p.includes('.angular/')) return false;
 if (p.includes('test/') ||
     p.includes('__test__/') || 
     p.includes('__tests__/') ||
@@ -913,8 +927,10 @@ const resFile = await fetch(`${environment.apiUrl}/api/github/proxy?url=${encode
 
     // ✅ Step 1: Try rule engine
     const res = await firstValueFrom(
-      this.agentApi.executeCodeReview(code.slice(0, 2000))
-    );
+this.agentApi.executeCodeReview(
+  code.slice(0, 2000),
+  file.path          // ✅ this enables backend filter
+)    );
 
     const ruleFindings = (res?.findings || []).map((f: any) => ({
       ...f,
@@ -947,10 +963,11 @@ console.log("CODE LENGTH:", combinedCode.length);
 
 
 // ✅ ✅ ADD STEP 3 HERE
-
 if (allFindings.length > 0) {
 
-  const r = this.buildCodeReviewUI(allFindings, combinedCode, validFileCount);
+  const filteredFindings = allFindings.filter(f => f.category !== 'AI Error');
+
+  const r = this.buildCodeReviewUI(filteredFindings, combinedCode, validFileCount);
 
   this.agentSvc.addMessage(id, this.thread(), {
     role: 'ai',
@@ -967,11 +984,10 @@ this.aiService.codeReview(combinedCode.slice(0, 2000)).subscribe({
   next: (res: any) => {
 
     // ✅ DIRECTLY USE BACKEND FINDINGS
-    const aiFindings = res?.findings || [];
-
+    const aiFindings = (res?.findings || []).filter((f: any) => f.category !== 'AI Error');
+const r = this.buildCodeReviewUI(aiFindings, combinedCode, validFileCount);
     console.log("AI FINDINGS:", aiFindings); // ✅ debug
 
-    const r = this.buildCodeReviewUI(aiFindings, combinedCode, validFileCount);
 
     this.agentSvc.addMessage(id, this.thread(), {
       role: 'ai',
@@ -1113,8 +1129,9 @@ this.aiService.codeReview(outbound).subscribe({
     const aiFindings = parsed?.findings || [];
 
     // ✅ Combine rules + AI
-    const allFindings = [...findings, ...aiFindings];
-    const r = this.buildCodeReviewUI(allFindings, outbound);
+const allFindings = [...findings, ...aiFindings]
+  .filter(f => f.category !== 'AI Error');
+  const r = this.buildCodeReviewUI(allFindings, outbound);
 
     this.agentSvc.addMessage(id, this.thread(), {
       role: 'ai',

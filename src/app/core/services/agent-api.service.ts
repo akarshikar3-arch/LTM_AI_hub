@@ -10,12 +10,24 @@ export class AgentApiService {
 
   constructor(private http: HttpClient) {}
 
-  executeCodeReview(code: string): Observable<any> {
-    return this.http.post(
-      this.apiUrl + '/api/agent/execute',
-      { text: code }
-    );
+  executeCodeReview(code: string, filePath?: string): Observable<any> {
+
+  const headers: any = {
+    'Content-Type': 'text/plain'
+  };
+
+  // ✅ add file path (critical for backend filtering)
+  if (filePath) {
+    headers['x-file-path'] = filePath;
   }
+
+  return this.http.post(
+    this.apiUrl + '/api/agent/execute',
+    code, // ✅ send raw code, NOT { text: code }
+    { headers }
+  );
+}
+
 
   healthCheck(): Observable<any> {
     return this.http.get(this.apiUrl + '/health');

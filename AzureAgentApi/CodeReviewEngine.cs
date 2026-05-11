@@ -27,7 +27,8 @@ public static class CodeReviewEngine
         var findings = new List<Finding>();
 
         CheckMemoryLifecycle(sourceCode, findings);
-        CheckTypeSafety(sourceCode, findings);
+       var language = DetectLanguage(sourceCode);
+CheckTypeSafety(sourceCode, language, findings);
         CheckPerformance(sourceCode, lines, findings);
         CheckBestPractices(sourceCode, lines, findings);
         CheckSecurity(sourceCode, findings);
@@ -129,8 +130,10 @@ public static class CodeReviewEngine
                 "http + .subscribe"));
     }
 
-    private static void CheckTypeSafety(string src, List<Finding> f)
+private static void CheckTypeSafety(string src, string language, List<Finding> f)
     {
+        if (!language.Contains("TypeScript"))
+    return;
         // Rule 9
         int anyCount = CountOccurrences(src, ": any") + CountOccurrences(src, "<any>") + CountOccurrences(src, "as any");
         if (anyCount > 0)
@@ -140,11 +143,17 @@ public static class CodeReviewEngine
                 "any x " + anyCount));
 
         // Rule 10
-        if (src.Contains(") {") && !src.Contains("): "))
-            f.Add(MakeFinding("Type Safety", "warning",
-                "Functions without explicit return types detected",
-                "Add return types for better maintainability",
-                "missing return type"));
+        
+       // ✅ Only detect proper TS functions missing return types
+if (Regex.IsMatch(src, @"function\s+\w+\s*\([^)]*\)\s*\{") &&
+    !Regex.IsMatch(src, @"function\s+\w+\s*\([^)]*\)\s*:\s*"))
+{
+    f.Add(MakeFinding("Type Safety", "info",
+        "TypeScript function without explicit return type",
+        "Add return types where necessary for better clarity",
+        "function missing return type"));
+}
+          
 
         // Rule 11
         if (src.Contains(": Object") || src.Contains(": object"))
@@ -329,12 +338,17 @@ public static class CodeReviewEngine
                 "bypassSecurityTrust"));
 
         // Rule 33
-        if (src.Contains("apiKey") || src.Contains("secret") || src.Contains("password =") || src.Contains("token ="))
-            if (src.Contains("= ") && !src.Contains("environment."))
-                f.Add(MakeFinding("Security", "critical",
-                    "Possible hardcoded secret/API key/password detected",
-                    "Move secrets to environment variables or a secure vault",
-                    "secret/apiKey/password in code"));
+      if (Regex.IsMatch(src,
+    @"(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|sk_live_[A-Za-z0-9]{10,}|sk_test_[A-Za-z0-9]{10,}|xox[baprs]-[A-Za-z0-9-]{10,}|apikey\s*=\s*[""'][^""']{10,}[""'])",
+    RegexOptions.IgnoreCase))
+{
+    f.Add(MakeFinding("Security", "critical",
+        "Hardcoded API key or secret detected",
+        "Move secrets to environment variables or a secure vault",
+        "real secret pattern match"));
+}
+
+
 
         // Rule 34
         if (src.Contains("eval("))
@@ -352,10 +366,10 @@ public static class CodeReviewEngine
 
         // Rule 36
         if (src.Contains("http://") && !src.Contains("localhost") && !src.Contains("127.0.0.1"))
-            f.Add(MakeFinding("Security", "critical",
-                "HTTP (non-secure) URL found in code",
-                "Always use HTTPS for API and external URLs",
-                "http://"));
+    f.Add(MakeFinding("Security", "warning",
+        "HTTP (non-secure) URL found in code",
+        "Prefer HTTPS for external endpoints",
+        "http://"));
                 // ✅ GENERIC SECURITY RULES (for PHP / backend code)
 
 // SQL Injection
@@ -369,21 +383,25 @@ if (src.Contains("$_GET") || src.Contains("$_POST") || src.Contains("$_REQUEST")
 }
 
 // 🔴 Direct SQL query (your existing rule - keep it)
-if (src.Contains("SELECT") && (src.Contains("+") || src.Contains(".")))
-{
-    f.Add(MakeFinding("Security", "critical",
-        "Dynamic SQL query detected -- possible SQL injection",
-        "Use parameterized queries or prepared statements",
-        "SQL string concatenation"));
-}
+// ✅ Detect SQL keywords
+bool looksLikeSQL =
+    Regex.IsMatch(src, @"\bSELECT\b|\bINSERT\b|\bUPDATE\b|\bDELETE\b", RegexOptions.IgnoreCase);
 
-// 🔴 SQL Injection (stronger regex)
-if (Regex.IsMatch(src, @"(SELECT|INSERT|UPDATE|DELETE).*\+\s*(req\.|id|user|name|pass)"))
+// ✅ Detect unsafe concatenation
+bool hasConcat =
+    Regex.IsMatch(src, @"['""].*\+\s*(req\.|userInput|id|param|input)", RegexOptions.IgnoreCase);
+
+// ✅ Detect SAFE parameterized queries
+bool isParameterized =
+    src.Contains("?") && Regex.IsMatch(src, @"\)\s*,\s*\[", RegexOptions.IgnoreCase);
+
+// ✅ FINAL RULE
+if (looksLikeSQL && hasConcat && !isParameterized)
 {
     f.Add(MakeFinding("Security", "critical",
         "SQL Injection: User input is directly concatenated into SQL query",
-        "Use parameterized queries instead",
-        "SQL concatenation with user input"));
+        "Use parameterized queries or ORM methods instead of string concatenation",
+        "SQL injection"));
 }
 
 // 🔴 Hardcoded Secrets
@@ -404,14 +422,7 @@ if (src.Contains("exec(") && (src.Contains("req.") || src.Contains("+ ")))
         "exec with user input"));
 }
 
-// 🔴 XSS (response injection)
-if (src.Contains("res.send") && src.Contains("+ ") && src.Contains("req."))
-{
-    f.Add(MakeFinding("Security", "critical",
-        "Cross-Site Scripting (XSS): User input is directly embedded in HTML response",
-        "Sanitize output before rendering",
-        "res.send with user input"));
-}
+
 
 // 🔴 XSS (echo/print - your existing rule - keep it)
 if (src.Contains("echo") || src.Contains("print"))
@@ -424,15 +435,6 @@ if (src.Contains("echo") || src.Contains("print"))
 }
 
 
-// XSS detection
-if (src.Contains("echo") || src.Contains("print"))
-{
-    if (!src.Contains("htmlspecialchars") && !src.Contains("encode"))
-        f.Add(MakeFinding("Security", "critical",
-            "Output not escaped -- possible XSS vulnerability",
-            "Use htmlspecialchars() or proper encoding",
-            "echo/print"));
-}
 // 🔴 Hardcoded credentials in comparison
 if (Regex.IsMatch(src, @"===?\s*[""'](admin|root|password|123|secret)", RegexOptions.IgnoreCase))
 {
@@ -450,14 +452,7 @@ if (src.Contains("innerHTML") && !src.Contains("sanitize") && !src.Contains("enc
         "Use textContent or sanitize input before rendering",
         "innerHTML assignment"));
 }
-// 🔴 innerHTML XSS
-if (src.Contains("innerHTML") && !src.Contains("sanitize") && !src.Contains("encode"))
-{
-    f.Add(MakeFinding("Security", "critical",
-        "DOM XSS: User input assigned to innerHTML without sanitization",
-        "Use textContent or sanitize input before rendering",
-        "innerHTML assignment"));
-}
+
 // 🔴 SSRF (Server-Side Request Forgery)
 if ((src.Contains("axios.get") || src.Contains("fetch(") || src.Contains("http.get")) &&
     (src.Contains("req.query") || src.Contains("req.body") || src.Contains("req.params")))
@@ -478,14 +473,16 @@ if (src.Contains("console.log") &&
         "console.log with sensitive data"));
 }
 
-// 🔴 Hardcoded API Keys (pattern-based)
-if (Regex.IsMatch(src, @"(sk-|sk_live|sk_test|ghp_|gsk_|AKIA)[a-zA-Z0-9]{10,}"))
+// 🔴 Hardcoded API Keys (pattern-based) - FIXED to allow underscore
+if (Regex.IsMatch(src, @"\b(ghp_|github_pat_|gsk_|AKIA|sk_live_|sk_test_|xox[baprs]-)[A-Za-z0-9_-]{10,}\b", RegexOptions.IgnoreCase))
 {
     f.Add(MakeFinding("Security", "critical",
-        "Hardcoded API Key: Live API key pattern detected in source code",
+        "Hardcoded API Key/Token detected in source code",
         "Use environment variables or a secrets manager",
-        "API key pattern detected"));
+        "Token pattern detected"));
 }
+
+
 
 // 🔴 Insecure Cookie (no httpOnly/secure flags)
 if (src.Contains("res.cookie") && !src.Contains("httpOnly") && !src.Contains("secure"))
@@ -497,14 +494,14 @@ if (src.Contains("res.cookie") && !src.Contains("httpOnly") && !src.Contains("se
 }
 
 // 🔴 Prototype Pollution
-if (src.Contains("for") && src.Contains("in") && src.Contains("source") &&
-    !src.Contains("hasOwnProperty"))
-{
-    f.Add(MakeFinding("Security", "critical",
-        "Prototype Pollution: Object merge without hasOwnProperty check",
-        "Always check hasOwnProperty() when iterating object keys from user input",
-        "Unsafe object merge"));
-}
+// if (src.Contains("for") && src.Contains("in") && src.Contains("source") &&
+//     !src.Contains("hasOwnProperty"))
+// {
+//     f.Add(MakeFinding("Security", "critical",
+//         "Prototype Pollution: Object merge without hasOwnProperty check",
+//         "Always check hasOwnProperty() when iterating object keys from user input",
+//         "Unsafe object merge"));
+// }
 
 // 🟠 Empty catch block
 if (Regex.IsMatch(src, @"catch\s*\([^)]*\)\s*\{\s*\}"))
@@ -515,12 +512,51 @@ if (Regex.IsMatch(src, @"catch\s*\([^)]*\)\s*\{\s*\}"))
         "Empty catch"));
 }
 // file include vulnerability
-if (src.Contains("include(") || src.Contains("require("))
+
+// ✅ Dynamic include/require only when argument is NOT a plain string literal
+// JS/TS: require(<non-literal>) OR require(`template ${...}`)
+bool dynamicJsRequire =
+    // require(someVar) / require(path + x) / require(foo.bar)
+    Regex.IsMatch(src, @"\brequire\s*\(\s*(?!['""`])", RegexOptions.IgnoreCase)
+    // require(`...${...}...`)  -> template string with interpolation
+    || Regex.IsMatch(src, @"\brequire\s*\(\s*`[^`]*\$\{", RegexOptions.IgnoreCase);
+
+// PHP: include/require(<non-literal>)
+bool dynamicPhpInclude =
+    Regex.IsMatch(src, @"\b(include|require)(_once)?\s*\(\s*(?!['""])", RegexOptions.IgnoreCase);
+
+if (dynamicJsRequire || dynamicPhpInclude)
 {
     f.Add(MakeFinding("Security", "warning",
-        "Dynamic file include detected -- possible file inclusion vulnerability",
-        "Validate file paths before including",
-        "include()/require()"));
+        "Dynamic include/require detected with non-literal path -- possible injection risk",
+        "Use a static string literal, or strictly whitelist/validate allowed module/file names",
+        dynamicJsRequire ? "require(non-literal)" : "include/require(non-literal)"));
+}
+// ✅ XSS Detection (ONLY when real HTML output + user input)
+bool outputsToHTML =
+    src.Contains("res.send") ||
+    src.Contains("innerHTML") ||
+    src.Contains("document.write");
+
+bool hasUserInput =
+    src.Contains("req.") || src.Contains("userInput");
+
+bool containsHTML =
+    src.Contains("<") && src.Contains(">");
+
+
+// ✅ OPTIONAL: detect sanitization (avoid false positives)
+bool isSanitized =
+    src.Contains("sanitize") ||
+    src.Contains("escape") ||
+    src.Contains("encode");
+
+if (outputsToHTML && hasUserInput && containsHTML && !isSanitized)
+{
+    f.Add(MakeFinding("Security", "critical",
+        "Cross-Site Scripting (XSS): User input embedded in HTML response",
+        "Sanitize or encode user input before rendering",
+        "XSS"));
 }
     }
 

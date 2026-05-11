@@ -28,7 +28,38 @@ app.MapPost("/api/agent/execute", async (HttpRequest request) =>
 
     Console.WriteLine("🔧 RULE ENGINE HIT, code length: " + code.Length);
 
-    var result = CodeReviewEngine.Analyze(code);
+    // ✅ Detect file path from header (we will pass it from frontend)
+var filePath = request.Headers["x-file-path"].ToString().ToLower();
+
+// ✅ Skip useless files
+if (!string.IsNullOrEmpty(filePath) &&
+    (filePath.Contains("node_modules") ||
+     filePath.Contains("/dist/") ||
+     filePath.Contains("\\dist\\") ||
+     filePath.Contains(".git") ||
+     filePath.EndsWith(".min.js") ||
+     filePath.EndsWith(".map")))
+{
+    return Results.Ok(new
+    {
+        skipped = true,
+        reason = "Filtered non-source file"
+    });
+}
+
+// ✅ Skip huge/minified content
+if (code.Length > 200000)
+{
+    return Results.Ok(new
+    {
+        skipped = true,
+        reason = "File too large (likely bundle)"
+    });
+}
+
+// ✅ Only then analyze
+var result = CodeReviewEngine.Analyze(code);
+
 
     Console.WriteLine("🔧 FINDINGS: " + result.Findings.Count);
 
@@ -58,8 +89,22 @@ app.MapPost("/api/ai/code-review", async (HttpClient http, HttpRequest request) 
     Console.WriteLine("🔥 AI ENDPOINT HIT");
 
     var apiKey = Environment.GetEnvironmentVariable("GROQ_API_KEY");
-    Console.WriteLine("API KEY START: " + apiKey.Substring(0, 8));
+if (string.IsNullOrEmpty(apiKey))
+{
+    Console.WriteLine("❌ GROQ KEY MISSING");
 
+    return Results.Ok(new
+    {
+        findings = new[]
+        {
+            new {
+                category = "AI Error",
+                issue = "AI disabled (missing key)",
+                severity = "warning"
+            }
+        }
+    });
+}
     var prompt = $@"
 You are a strict security code reviewer.
 Analyse this code for REAL exploitable security vulnerabilities ONLY.
