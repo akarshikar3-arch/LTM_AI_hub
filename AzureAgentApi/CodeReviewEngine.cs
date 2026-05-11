@@ -551,8 +551,22 @@ bool isSanitized =
     src.Contains("escape") ||
     src.Contains("encode");
 
+// ✅ Strong XSS (HTML injection)
 if (outputsToHTML && hasUserInput && containsHTML && !isSanitized)
 {
+    f.Add(MakeFinding("Security", "critical",
+        "Cross-Site Scripting (XSS): User input embedded in HTML response",
+        "Sanitize or encode user input before rendering",
+        "XSS (HTML injection)"));
+}
+// ✅ Weak XSS (direct user output, no HTML but still risky)
+else if (outputsToHTML && hasUserInput && !isSanitized)
+{
+    f.Add(MakeFinding("Security", "warning",
+        "Potential XSS: User input is directly sent in response",
+        "Validate or sanitize output to prevent injection risks",
+        "XSS (direct output)"));
+}{
     f.Add(MakeFinding("Security", "critical",
         "Cross-Site Scripting (XSS): User input embedded in HTML response",
         "Sanitize or encode user input before rendering",
