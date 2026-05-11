@@ -533,44 +533,43 @@ if (dynamicJsRequire || dynamicPhpInclude)
         dynamicJsRequire ? "require(non-literal)" : "include/require(non-literal)"));
 }
 // ✅ XSS Detection (ONLY when real HTML output + user input)
-bool outputsToHTML =
-    src.Contains("res.send") ||
-    src.Contains("innerHTML") ||
-    src.Contains("document.write");
+// ✅ XSS Detection (line-based, accurate)
+var lines = src.Split('\n');
 
-bool hasUserInput =
-    src.Contains("req.") || src.Contains("userInput");
-
-bool containsHTML =
-    src.Contains("<") && src.Contains(">");
-
-
-// ✅ OPTIONAL: detect sanitization (avoid false positives)
-bool isSanitized =
-    src.Contains("sanitize") ||
-    src.Contains("escape") ||
-    src.Contains("encode");
-
-// ✅ Strong XSS (HTML injection)
-if (outputsToHTML && hasUserInput && containsHTML && !isSanitized)
+foreach (var line in lines)
 {
-    f.Add(MakeFinding("Security", "critical",
-        "Cross-Site Scripting (XSS): User input embedded in HTML response",
-        "Sanitize or encode user input before rendering",
-        "XSS (HTML injection)"));
-}
-// ✅ Weak XSS (direct user output, no HTML but still risky)
-else if (outputsToHTML && hasUserInput && !isSanitized)
-{
-    f.Add(MakeFinding("Security", "warning",
-        "Potential XSS: User input is directly sent in response",
-        "Validate or sanitize output to prevent injection risks",
-        "XSS (direct output)"));
-}{
-    f.Add(MakeFinding("Security", "critical",
-        "Cross-Site Scripting (XSS): User input embedded in HTML response",
-        "Sanitize or encode user input before rendering",
-        "XSS"));
+    bool outputsToHTML =
+        line.Contains("res.send") ||
+        line.Contains("innerHTML") ||
+        line.Contains("document.write");
+
+    bool hasUserInput =
+        line.Contains("req.") || line.Contains("userInput");
+
+    bool containsHTML =
+        line.Contains("<") && line.Contains(">");
+
+    bool isSanitized =
+        line.Contains("sanitize") ||
+        line.Contains("escape") ||
+        line.Contains("encode");
+
+    // 🔴 Strong XSS
+    if (outputsToHTML && hasUserInput && containsHTML && !isSanitized)
+    {
+        f.Add(MakeFinding("Security", "critical",
+            "Cross-Site Scripting (XSS): User input embedded in HTML response",
+            "Sanitize or encode user input before rendering",
+            "XSS (HTML injection)"));
+    }
+    // 🟠 Weak XSS
+    else if (outputsToHTML && hasUserInput && !isSanitized)
+    {
+        f.Add(MakeFinding("Security", "warning",
+            "Potential XSS: User input is directly sent in response",
+            "Validate or sanitize output to prevent injection risks",
+            "XSS (direct output)"));
+    }
 }
     }
 
