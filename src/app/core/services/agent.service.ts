@@ -20,7 +20,7 @@ export class AgentService {
       runsPerMonth: 2340,
       hoursSaved: 280,
       activityPct: 92,
-      isFavorite: true,
+      isFavorite: false,
       lastUsed: '1h ago',
       samplePrompts: [
         'Raise an incident — my laptop won\'t connect to VPN',
@@ -74,7 +74,7 @@ export class AgentService {
       runsPerMonth: 1890,
       hoursSaved: 245,
       activityPct: 78,
-      isFavorite: true,
+      isFavorite: false,
       lastUsed: 'Yesterday',
       samplePrompts: [
         'Find all production datasets for Permian Basin wells',
@@ -221,7 +221,7 @@ export class AgentService {
       runsPerMonth: 0,
       hoursSaved: 0,
       activityPct: 0,
-      isFavorite: false,
+      isFavorite: true,
       lastUsed: undefined,
       samplePrompts: [
         'Create a data model for this business domain',

@@ -4,7 +4,12 @@ import { DecimalPipe } from '@angular/common';
 import { AgentService } from '../../core/services/agent.service';
 import { AgentCardComponent } from '../../shared/components/agent-card/agent-card.component';
 import { AgentCategory } from '../../core/models/agent.model';
- 
+import { RecentService } from '../../core/services/recent.service';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+
+
+
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -76,12 +81,12 @@ import { AgentCategory } from '../../core/models/agent.model';
           <button class="sec-more" routerLink="/agents">See all</button>
         </div>
         <div class="recent-row">
-          @for (a of agentService.recentlyUsed(); track a.id) {
+         @for (a of recentAgents(); track a.id){
             <a class="recent-chip" [routerLink]="['/chat', a.id]">
               <div class="rc-icon" [class]="a.colorClass">{{ a.icon }}</div>
               <div>
                 <div class="rc-name">{{ a.name }}</div>
-                <div class="rc-time">{{ a.lastUsed }}</div>
+                
               </div>
             </a>
           }
@@ -229,7 +234,27 @@ export class HomeComponent {
   readonly filteredAgents = computed(() =>
     this.agentService.filterBy(this.activeCat(), 'all', '')
   );
-  constructor(readonly agentService: AgentService) { }
+recentAgents = signal<any[]>([]);
+ngOnInit() {
+  this.loadRecents();
+}
+
+loadRecents() {
+  this.recentAgents.set(this.recentService.getRecent());
+}
+  
+constructor(
+  readonly agentService: AgentService,
+  private recentService: RecentService,
+  private router: Router
+) {
+  // ✅ listen for navigation
+  this.router.events
+    .pipe(filter(e => e instanceof NavigationEnd))
+    .subscribe(() => {
+      this.loadRecents();
+    });
+}
   setCat(c: AgentCategory | 'All') { this.activeCat.set(c); }
 }
  

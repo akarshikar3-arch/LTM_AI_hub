@@ -16,6 +16,7 @@ import { AgentCategory } from '../../core/models/agent.model';
         <button class="pill" [class.active]="cat() === 'All'" (click)="setCat('All')">All</button>
         <button class="pill" [class.active]="cat() === 'Business Usecase'" (click)="setCat('Business Usecase')">Business Usecase</button>
         <button class="pill" [class.active]="cat() === 'Enterprise'" (click)="setCat('Enterprise')">Enterprise</button>
+        <button class="pill" [class.active]="cat() === 'Data'" (click)="setCat('Data')">Data</button>
       </div>
       <div class="pill-group" style="margin-top:-12px">
         <button class="pill sm" [class.active]="stat() === 'all'" (click)="setStat('all')">All</button>

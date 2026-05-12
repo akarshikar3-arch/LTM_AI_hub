@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Agent } from '../../../core/models/agent.model';
 import { AgentActionButtonsComponent } from '../../../pages/agents/agent-action-buttons.component';
+import { RecentService } from '../../../core/services/recent.service';
 
 @Component({
   selector: 'app-agent-card',
@@ -158,11 +159,18 @@ export class AgentCardComponent {
   @Input() mode: 'grid' | 'list' = 'grid';
   @Output() favoriteToggled = new EventEmitter<number>();
 
-  constructor(private router: Router) {}
+constructor(
+  private router: Router,
+  private recentService: RecentService
+) {}
 
   openChat() {
-    this.router.navigate(['/chat', this.agent.id]);
-  }
+
+  // ✅ ADD THIS LINE
+  this.recentService.addRecent(this.agent);
+
+  this.router.navigate(['/chat', this.agent.id]);
+}
 
   toggleFav(event: MouseEvent) {
     event.stopPropagation();

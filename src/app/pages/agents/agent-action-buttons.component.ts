@@ -2,7 +2,7 @@ import { Component, Input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Agent } from '../../core/models/agent.model';
-
+import { RecentService } from '../../core/services/recent.service';
 type ModalType = 'access' | 'support' | 'demo' | null;
 
 @Component({
@@ -475,8 +475,9 @@ type ModalType = 'access' | 'support' | 'demo' | null;
             <p class="section-hd" style="margin-top:1rem">Try a sample prompt</p>
             <div class="prompt-list">
               @for (p of agent.samplePrompts; track p) {
-                <button class="prompt-btn" (click)="openAgentWithPrompt(p)">{{ p }}</button>
-              }
+<button class="prompt-btn" (click)="openAgentWithPrompt(agent, p)">
+  {{ p }}
+</button>              }
             </div>
           </div>
 
@@ -495,7 +496,10 @@ export class AgentActionButtonsComponent {
 
   activeModal = signal<ModalType>(null);
 
-  constructor(private router: Router) {}
+ constructor(
+  private router: Router,
+  private recentService: RecentService
+) {}
 
   openModal(type: ModalType) {
     this.activeModal.set(type);
@@ -505,17 +509,25 @@ export class AgentActionButtonsComponent {
     this.activeModal.set(null);
   }
 
-  openAgentWithPrompt(prompt: string) {
-    this.closeModal();
-    this.router.navigate(['/agents', this.agent.id], {
-      queryParams: { prompt }
-    });
-  }
+ openAgentWithPrompt(agent: Agent, prompt: string) {
+  this.closeModal();
+
+  // ✅ ADD THIS LINE
+  this.recentService.addRecent(agent);
+
+  this.router.navigate(['/agents'], {
+    queryParams: { prompt }
+  });
+}
 
   // ✅ ADD THIS
   goToChat() {
-    this.closeModal();
-    this.router.navigate(['/chat', this.agent.id]);
-    // OR: this.router.navigate(['/chat'], { queryParams: { agentId: this.agent.id } });
-  }
+  this.closeModal();
+
+  // ✅ ADD THIS
+  this.recentService.addRecent(this.agent);
+
+  this.router.navigate(['/chat', this.agent.id]);
+}
+
 }

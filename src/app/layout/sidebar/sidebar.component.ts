@@ -1,8 +1,9 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, signal } from '@angular/core';
 import { Router, NavigationEnd, Event, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AgentService } from '../../core/services/agent.service';
 import { LayoutService } from '../../core/services/layout.service';
+import { RecentService } from '../../core/services/recent.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -85,7 +86,7 @@ import { LayoutService } from '../../core/services/layout.service';
         <div class="nav-divider"></div>
         <div class="nav-section-label">Recent Chats</div>
 
-        @for (agent of agentService.recentlyUsed(); track agent.id) {
+       @for (agent of recentChats(); track agent.id) {
           <a [routerLink]="['/chat', agent.id]" routerLinkActive="active" class="nav-agent">
             <div class="nav-agent-icon" [class]="agent.colorClass">{{ agent.icon }}</div>
             <span class="nav-agent-name">{{ agent.name }}</span>
@@ -108,6 +109,12 @@ import { LayoutService } from '../../core/services/layout.service';
           <span class="nav-icon cat-icon ic-amber">📊</span>
           <span>Enterprise</span>
           <span class="nav-badge">1</span>
+        </a>
+
+        <a routerLink="/agents" [queryParams]="{category: 'Data'}" class="nav-item cat">
+          <span class="nav-icon cat-icon ic-teal">📈</span>
+          <span>Data</span>
+          <span class="nav-badge">3</span>
         </a>
 
       </nav>
@@ -322,39 +329,44 @@ export class SidebarComponent implements OnDestroy {
 
   isChatRoute = false;
   sidebarOpen = false;
+  isExternalAgent = false;
 
   private subs = new Subscription();
 
   constructor(
     readonly agentService: AgentService,
     private router: Router,
-    private layout: LayoutService
+    private layout: LayoutService,
+    private recentService: RecentService
   ) {
     // Detect /chat route and auto-close sidebar
-  this.subs.add(
-  this.router.events
-    .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-    .subscribe((e) => {
-      const url = e.urlAfterRedirects;
+    this.subs.add(
+      this.router.events
+        .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+        .subscribe((e) => {
+          const url = e.urlAfterRedirects;
 
-      // Check if this is an external agent (like Data Analysis)
-      let isExternalAgent = false;
-      if (url.startsWith('/chat/')) {
-        const id = parseInt(url.split('/')[2], 10);
-        const agent = this.agentService.getAgentById(id);
-        isExternalAgent = !!agent?.externalUrl;
-      }
+          // Check if this is an external agent (like Data Analysis)
+          let isExternalAgent = false;
+          if (url.startsWith('/chat/')) {
+            const id = parseInt(url.split('/')[2], 10);
+            const agent = this.agentService.getAgentById(id);
+            isExternalAgent = !!agent?.externalUrl;
+          }
 
-      // External agents: sidebar stays visible like homepage
-      this.isChatRoute = url.startsWith('/chat') && !isExternalAgent;
+          // External agents: sidebar stays visible like homepage
 
-      if (!isExternalAgent) {
-        this.sidebarOpen = false;
-        this.layout.closeGlobalSidebar();
-        document.body.classList.remove('global-sidebar-open');
-      }
-    })
-);
+          this.isChatRoute = url.startsWith('/chat') && !isExternalAgent;
+
+          if (!isExternalAgent) {
+            this.sidebarOpen = false;
+            this.layout.closeGlobalSidebar();
+            document.body.classList.remove('global-sidebar-open');
+          }
+          this.loadRecents();
+        })
+    );
+
 
     // Listen to topbar toggle (LayoutService)
     this.subs.add(
@@ -367,6 +379,16 @@ export class SidebarComponent implements OnDestroy {
       })
     );
   }
+
+  recentChats = signal<any[]>([]);
+
+  ngOnInit() {
+    this.loadRecents();
+  }
+
+ loadRecents() {
+  this.recentChats.set(this.recentService.getRecent().slice(0, 3));
+}
 
   closeSidebar() {
     this.layout.closeGlobalSidebar();
