@@ -548,6 +548,35 @@ model: 'Azure OpenAI',
       chatHistory: { personal: [], shared: [] },
       chatHistory_history: []
     },
+     {
+    id: 44,
+    name: 'Power BI Generation Agent',
+    team: 'Data',
+    category: 'Data',
+    icon: '📊',
+    colorClass: 'ic-blue',
+    status: 'live',
+    externalUrl: 'https://brave-flower-0a1aef600.7.azurestaticapps.net',
+    model: 'Azure OpenAI',
+    tagline: 'Auto-generate Power BI dashboards and reports',
+    description: 'Generate Power BI dashboards, DAX measures and data models from natural language descriptions and raw data sources.',
+    fullDescription: 'Converts natural language requirements into complete Power BI solutions including dashboard layouts, DAX measures, data model designs, relationships and visual recommendations. Supports automated report generation from CSV, SQL and API data sources.',
+    runsPerMonth: 50,
+    hoursSaved: 80,
+    activityPct: 75,
+    isFavorite: false,
+    lastUsed: undefined,
+    samplePrompts: [
+      'Generate a Power BI dashboard for monthly sales data',
+      'Create DAX measures for YoY revenue comparison',
+      'Design a data model for this dataset',
+      'Build a KPI report from this CSV file'
+    ],
+    chatHistory: { personal: [], shared: [] },
+    chatHistory_history: []
+  },
+
+
     {
       id: 19,
       name: 'SRS to Power BI Migration Agent',
@@ -1199,32 +1228,7 @@ model: 'Azure OpenAI',
       chatHistory_history: []
     },
  
-      {
-    id: 44,
-    name: 'Power BI Generation Agent',
-    team: 'Data',
-    category: 'Data',
-    icon: '📊',
-    colorClass: 'ic-blue',
-    status: 'live',
-    model: 'Azure OpenAI',
-    tagline: 'Auto-generate Power BI dashboards and reports',
-    description: 'Generate Power BI dashboards, DAX measures and data models from natural language descriptions and raw data sources.',
-    fullDescription: 'Converts natural language requirements into complete Power BI solutions including dashboard layouts, DAX measures, data model designs, relationships and visual recommendations. Supports automated report generation from CSV, SQL and API data sources.',
-    runsPerMonth: 50,
-    hoursSaved: 80,
-    activityPct: 75,
-    isFavorite: false,
-    lastUsed: undefined,
-    samplePrompts: [
-      'Generate a Power BI dashboard for monthly sales data',
-      'Create DAX measures for YoY revenue comparison',
-      'Design a data model for this dataset',
-      'Build a KPI report from this CSV file'
-    ],
-    chatHistory: { personal: [], shared: [] },
-    chatHistory_history: []
-  },
+     
   ]);
  
   readonly agents = this._agents.asReadonly();
