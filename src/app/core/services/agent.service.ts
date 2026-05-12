@@ -111,6 +111,32 @@ export class AgentService {
   ]
     },
     {
+      id: 6,
+      name: 'Angular Code Reviewer',
+      team: 'Business Usecase',
+      category: 'Business Usecase',
+      icon: '🔍',
+      colorClass: 'ic-amber',
+      status: 'live',
+      model: '.NET 8 Rule Engine',
+      tagline: 'AI-powered Angular & TypeScript code review',
+      description: 'Paste any Angular or TypeScript code — get instant review with issues, suggestions, and a score.',
+      fullDescription: 'Converts natural language business rules and domain descriptions into normalized data models, ER diagrams, database schemas and comprehensive data dictionaries with field-level documentation.',
+      runsPerMonth: 60,
+      hoursSaved: 30,
+      activityPct: 70,
+      isFavorite: true,
+      lastUsed: undefined,
+      samplePrompts: [
+        'Create a data model for this business domain',
+        'Normalize this flat data structure',
+        'Generate a schema from these business rules',
+        'Build a data dictionary for this system'
+      ],
+      chatHistory: { personal: [], shared: [] },
+      chatHistory_history: []
+    },
+    {
       id: 3,
       name: 'SharePoint Assistant',
       team: 'IT & Platforms',
@@ -202,32 +228,6 @@ export class AgentService {
         'Create an API contract for this service',
         'Document the architecture for this system',
         'Draft a data flow diagram description'
-      ],
-      chatHistory: { personal: [], shared: [] },
-      chatHistory_history: []
-    },
-    {
-      id: 6,
-      name: 'Angular Code Reviewer',
-      team: 'Business Usecase',
-      category: 'Business Usecase',
-      icon: '🔍',
-      colorClass: 'ic-amber',
-      status: 'live',
-      model: '.NET 8 Rule Engine',
-      tagline: 'AI-powered Angular & TypeScript code review',
-      description: 'Paste any Angular or TypeScript code — get instant review with issues, suggestions, and a score.',
-      fullDescription: 'Converts natural language business rules and domain descriptions into normalized data models, ER diagrams, database schemas and comprehensive data dictionaries with field-level documentation.',
-      runsPerMonth: 0,
-      hoursSaved: 0,
-      activityPct: 0,
-      isFavorite: true,
-      lastUsed: undefined,
-      samplePrompts: [
-        'Create a data model for this business domain',
-        'Normalize this flat data structure',
-        'Generate a schema from these business rules',
-        'Build a data dictionary for this system'
       ],
       chatHistory: { personal: [], shared: [] },
       chatHistory_history: []
