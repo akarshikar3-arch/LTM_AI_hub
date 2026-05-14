@@ -108,12 +108,31 @@ function getNextResponse(agentId: number): string {
   
       <div class="chat-layout">
         <header class="chat-header">
-          <button class="global-nav-btn" (click)="toggleGlobalSidebar()" aria-label="Open menu" title="Open menu">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"></rect><rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"></rect><rect x="2" y="11" width="12" height="2" rx="1" fill="currentColor"></rect></svg>
-          </button>
-          <a class="back-btn" routerLink="/home">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M10 13L5 8l5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </a>
+@if (!isCodeReviewer()) {
+ <button class="global-nav-btn"
+        (click)="toggleGlobalSidebar()"
+        [style.display]="isCodeReviewer() ? 'none' : ''">
+  <svg width="16" height="16" viewBox="0 0 16 16">
+    <rect x="2" y="3" width="12" height="2"></rect>
+    <rect x="2" y="7" width="12" height="2"></rect>
+    <rect x="2" y="11" width="12" height="2"></rect>
+  </svg>
+</button>
+
+}
+
+@if (!isCodeReviewer()) {
+  <a class="back-btn" routerLink="/home">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M10 13L5 8l5-5"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+    </svg>
+  </a>
+}
+
           @if (agent()) {
             <div class="agent-icon-wrap" [class]="agent()!.colorClass">{{ agent()!.icon }}</div>
             <div class="chat-agent-info">
@@ -458,6 +477,8 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   @ViewChild('msgContainer') msgContainer?: ElementRef;
   @ViewChild('inputRef') inputRef?: ElementRef;
 
+  hideSidebarForReviewer = false;
+
   private agentId = signal(0);
   readonly thread = signal<ThreadType>('personal');
   readonly panelOpen = signal(false);
@@ -497,7 +518,7 @@ constructor(
     private router: Router,
     readonly agentSvc: AgentService,
     private dl: CopilotDirectLineService,
-    private layout: LayoutService,
+    public layout: LayoutService,
     private aiService: AiService,
     private agentApi: AgentApiService,
     private sanitizer: DomSanitizer
@@ -510,6 +531,7 @@ constructor(
     }
   }
 
+  
 async ngOnInit() {
     // Inject code review styles
     console.log('🔥 NGONINIT FIRED');
@@ -614,6 +636,13 @@ async ngOnInit() {
     } catch (e) {
       console.error('LIVE AGENT CONNECT FAILED', e);
     }
+  }
+});
+this.router.events.subscribe((e: any) => {
+  if (e.urlAfterRedirects) {
+    const url = e.urlAfterRedirects;
+
+    this.hideSidebarForReviewer = url.startsWith('/code-reviewer');
   }
 });
 
@@ -1302,6 +1331,9 @@ return;
     this.agentSvc.addMessage(id, this.thread(), { role: 'ai', content: getNextResponse(id), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
     this.shouldScroll = true;
   }
+isCodeReviewer(): boolean {
+  return window.location.pathname.includes('code-reviewer');
+}
 
   clearConversation() {
     const id = this.agentId();

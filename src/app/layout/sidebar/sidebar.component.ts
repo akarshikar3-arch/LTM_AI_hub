@@ -5,11 +5,13 @@ import { AgentService } from '../../core/services/agent.service';
 import { LayoutService } from '../../core/services/layout.service';
 import { RecentService } from '../../core/services/recent.service';
 
+
 @Component({
   selector: 'app-sidebar',
   standalone: true,
   imports: [RouterLink, RouterLinkActive],
   template: `
+  @if (!hideSidebarForReviewer) {
     <!-- Backdrop only on /chat when sidebar is open -->
     @if (isChatRoute && sidebarOpen) {
       <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
@@ -119,6 +121,7 @@ import { RecentService } from '../../core/services/recent.service';
 
       </nav>
     </aside>
+}
   `,
   styles: [`
     /* Base sidebar (normal pages) */
@@ -330,7 +333,7 @@ export class SidebarComponent implements OnDestroy {
   isChatRoute = false;
   sidebarOpen = false;
   isExternalAgent = false;
-
+ hideSidebarForReviewer = false;
   private subs = new Subscription();
 
   constructor(
@@ -345,7 +348,18 @@ export class SidebarComponent implements OnDestroy {
         .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
         .subscribe((e) => {
           const url = e.urlAfterRedirects;
+          
+  
 
+// ✅ hide sidebar ONLY for this route
+this.hideSidebarForReviewer = url.startsWith('/code-reviewer');
+
+// ✅ if hidden, force close everything
+if (this.hideSidebarForReviewer) {
+  this.sidebarOpen = false;
+  this.layout.closeGlobalSidebar();
+  document.body.classList.remove('global-sidebar-open');
+}
           // Check if this is an external agent (like Data Analysis)
           let isExternalAgent = false;
           if (url.startsWith('/chat/')) {
