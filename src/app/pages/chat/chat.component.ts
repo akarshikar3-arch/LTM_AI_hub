@@ -583,21 +583,41 @@ async ngOnInit() {
       document.head.appendChild(s);
     }
 
-    this.route.params.subscribe(async p => {
-      const id = parseInt(p['id'], 10);
-      this.agentId.set(id);
-      
+ this.route.params.subscribe(async (p) => {
 
-      if (!this.agentSvc.getAgentById(id)) { this.router.navigate(['/home']); return; }
-      if (id === this.LIVE_AGENT_ID) {
-        try {
-          const token = await this.dl.generateToken();
-          const conversationId = await this.dl.startConversation();
-          console.log('TOKEN:', token);
-          console.log('LIVE AGENT CONNECTED:', conversationId);
-        } catch (e) { console.error('LIVE AGENT CONNECT FAILED', e); }
-      }
-    });
+  let id = Number(p['id']);
+
+  // ✅ if route has NO id → force code reviewer
+  if (!p['id']) {
+    id = 6;
+  }
+
+  console.log("✅ FINAL ID USED:", id);
+
+  this.agentId.set(id);
+
+  // ✅ DEBUG
+  const agent = this.agentSvc.getAgentById(id);
+  console.log("✅ AGENT FOUND:", agent);
+
+ if (!agent) {
+  console.warn("⚠️ Agent not found — staying on page");
+  return;
+}
+
+  if (id === this.LIVE_AGENT_ID) {
+    try {
+      const token = await this.dl.generateToken();
+      const conversationId = await this.dl.startConversation();
+      console.log('TOKEN:', token);
+      console.log('LIVE AGENT CONNECTED:', conversationId);
+    } catch (e) {
+      console.error('LIVE AGENT CONNECT FAILED', e);
+    }
+  }
+});
+
+
   }
 
   ngAfterViewChecked() {

@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'home', pathMatch: 'full' },
+ 
   {
     path: 'home',
     loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent),
@@ -23,9 +23,17 @@ export const routes: Routes = [
     title: 'Usage Stats — Chevron AI Hub'
   },
   {
+  path: 'code-reviewer',
+  loadComponent: () =>
+    import('./pages/chat/chat.component').then(m => m.ChatComponent),
+  title: 'Code Reviewer'
+},
+  {
     path: 'chat/:id',
     loadComponent: () => import('./pages/chat/chat.component').then(m => m.ChatComponent),
     title: 'Chat — Chevron AI Hub'
   },
+   { path: '', redirectTo: 'home', pathMatch: 'full' },
   { path: '**', redirectTo: 'home' }
+
 ];
