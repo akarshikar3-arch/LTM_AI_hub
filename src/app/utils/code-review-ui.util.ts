@@ -83,7 +83,7 @@ export function buildCodeReviewUI(
   if (infos.length > 0)
     r += buildBucket('Info', '🔵', infos, 'cr-sec-i', 'cr-card-i', false);
 
-  r += buildBucket('All Issues', '📋', mergedFindings, 'cr-sec-a', 'cr-card-c', false);
+  r += buildBucket('Review Summary', '📋', mergedFindings, 'cr-sec-a', 'cr-card-c', false);
 
   return r + `</div>`;
 }
