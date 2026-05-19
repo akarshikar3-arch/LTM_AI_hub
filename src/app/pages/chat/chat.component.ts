@@ -10,6 +10,10 @@ import { AgentApiService } from '../../core/services/agent-api.service';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { CodeReviewService } from '../../core/services/code-review.service';
+import { buildCodeReviewUI } from 'src/app/utils/code-review-ui.util';
+
+
 
 
 const AGENT_SYSTEM_PROMPTS: Record<number, string> = {
@@ -515,6 +519,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
 constructor(
     private route: ActivatedRoute,
+    private codeReviewService: CodeReviewService,
     private router: Router,
     readonly agentSvc: AgentService,
     private dl: CopilotDirectLineService,
@@ -689,389 +694,6 @@ this.router.events.subscribe((e: any) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (this.canSend) this.send(); }
   }
   
- private buildCodeReviewUI(mergedFindings: any[], outbound: string, fileCount: number = 1): string{
-
-  const criticalCount = mergedFindings.filter(f => f.severity === 'critical').length;
-  const warningCount = mergedFindings.filter(f => f.severity === 'warning').length;
-
-  
-let score = 10;
-
-score -= criticalCount * 4;
-score -= warningCount * 2;
-
-if (score < 0) score = 0;
-
-
-  let verdict = "✅ Ready for merge";
-  if (criticalCount > 0) verdict = "🚫 Do not merge – critical issues found";
-  else if (warningCount > 0) verdict = "⚠️ Merge with caution";
-
-  const scoreClass =
-    score >= 9 ? 'cr-excellent' :
-    score >= 7 ? 'cr-good' :
-    score >= 5 ? 'cr-mid' :
-    score >= 3 ? 'cr-poor' : 'cr-fail';
-
-const lineCount = (outbound.match(/\n/g) || []).length + 1;
-  let r = `<div class="cr-report">`;
-
-  // ✅ SCORE CARD
-  r += `
-  <div class="cr-scorecard ${scoreClass}">
-    <div class="cr-score-ring">
-      <span class="cr-score-val">${score}</span>
-      <span class="cr-score-of">/10</span>
-    </div>
-
-    <div class="cr-score-right">
-      <div class="cr-badges">
-        ${criticalCount > 0 ? `<span class="cr-b cr-b-c">${criticalCount} Critical</span>` : ''}
-        ${warningCount > 0 ? `<span class="cr-b cr-b-w">${warningCount} Warning</span>` : ''}
-      </div>
-
-      <div class="cr-lang">
- <code>Code</code> · ${fileCount} file${fileCount > 1 ? 's' : ''} · ${lineCount} lines
-
-</div>
-
-      <div class="cr-verdict">${verdict}</div>
-    </div>
-  </div>
-  `;
-
-  // ✅ BUCKET BUILDER
-  const buildBucket = (title: string, icon: string, items: any[], cls: string, cardCls: string, isOpen: boolean) => {
-    let h = `<details class="cr-sec ${cls}"${isOpen ? ' open' : ''}><summary>`;
-    h += `<span class="cr-sec-icon">${icon}</span>`;
-    h += `<span style="flex:1">${title}</span>`;
-    h += `<span class="cr-sec-count">${items.length}</span>`;
-    h += `</summary><div class="cr-list">`;
-
-    for (const f of items) {
-      const si = f.severity === 'critical' ? '🔴' : f.severity === 'warning' ? '🟠' : '🔵';
-      const cleaned = f.issue
-  .replace(/\*/g, '')   // ✅ remove *
-  .replace(/\n+/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim();
-// ✅ STEP 1: convert markdown first
-const htmlConverted = cleaned
-  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  .replace(/\*(.*?)\*/g, '<em>$1</em>')
-  .replace(/`(.*?)`/g, '<code>$1</code>');
-
-// ✅ STEP 2: split title + desc
-let title = htmlConverted;
-let desc = '';
-
-const match = htmlConverted.match(/<strong>(.*?)<\/strong>(.*)/);
-
-if (match) {
-  title = match[1];
-  desc = match[2].trim();
-}
-
-// ✅ FINAL UI
-const issueHtml = `
-  <strong>${title}${desc ? ':' : ''}</strong>
-  <span style="opacity:0.8">${desc}</span>
-`;
- 
-
-
-h += `<div class="cr-card ${cardCls}">
-        <div class="cr-card-cat">${si} ${f.category}</div>
-        ${f.file ? `<div style="font-size:0.75rem; opacity:0.6;">📄 ${f.file}</div>` : ''}
-        <div class="cr-card-issue">${issueHtml}</div>
-      </div>`;
-    }
-
-h += `</div></details>`;
-    return h;
-  };
-
-  // 🔎 DEBUG — check if files are tagged
-  console.log("🔎 FINDINGS WITH FILES:", mergedFindings.map(f => ({ issue: f.issue?.substring(0, 30), file: f.file })));
-
-  const criticals = mergedFindings.filter(f => f.severity === 'critical');
-  const warnings = mergedFindings.filter(f => f.severity === 'warning');
-  const infos = mergedFindings.filter(f => f.severity === 'info');
-
-  if (criticals.length > 0)
-    r += buildBucket('Critical Issues', '🔴', criticals, 'cr-sec-c', 'cr-card-c', true);
-
-  if (warnings.length > 0)
-    r += buildBucket('Warnings', '🟠', warnings, 'cr-sec-w', 'cr-card-w', false);
-
-  if (infos.length > 0)
-    r += buildBucket('Info', '🔵', infos, 'cr-sec-i', 'cr-card-i', false);
-
-  r += buildBucket('All Issues', '📋', mergedFindings, 'cr-sec-a', 'cr-card-c', false);
-
-  return r + `</div>`;
-}
-
-private async handleRepoReview(repoUrl: string) {
-
-  this.isTyping.set(true);
-
-  const id = this.agentId();
-  const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  try {
-    // ✅ Extract owner + repo
-    const parts = repoUrl.split('/');
-    const owner = parts[3];
-    const repo = parts[4];
-
-let branch = 'main';
-
-
-
-let apiUrl = `https://api.github.com/repos/${owner}/${repo}`;
-let repoMeta = await fetch(`${environment.apiUrl}/api/github/proxy?url=${encodeURIComponent(apiUrl)}`).then(r => r.json());
-
-
-// ✅ get actual default branch
-branch = repoMeta.default_branch || 'main';
-
-
-apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
-const response = await fetch(`${environment.apiUrl}/api/github/proxy?url=${encodeURIComponent(apiUrl)}`);
-
-if (!response.ok) {
-  throw new Error("GitHub tree fetch failed");
-}
-
-
-  const tree = await response.json();
-
-let codeFiles = tree.tree
-  .filter((f: any) => {
-    if (f.type !== 'blob') return false;
-    
-    const p = f.path.toLowerCase();
-    
-    // ❌ Skip non-code files
-    if (p.includes('node_modules/')) return false;
-    if (p.includes('dist/')) return false;
-    // ✅ NEW: SKIP docs/scripts/examples (avoid false positives)
-if (
-  p.includes('docs/') ||
-  p.includes('scripts/') ||
-  p.includes('examples/') ||
-  p.includes('demo/') ||
-  p.includes('benchmarks/') ||
-  p.includes('test/')
-) return false;
-if (p.includes('build/')) return false;
-if (p.includes('out/')) return false;
-if (p.includes('coverage/')) return false;
-if (p.includes('.angular/')) return false;
-if (p.includes('test/') ||
-    p.includes('__test__/') || 
-    p.includes('__tests__/') ||
-    p.includes('spec/') ||
-    p.includes('.spec.') ||
-    p.includes('.test.')) return false;    if (p.includes('.min.') || p.includes('.map')) return false;
-    if (p.endsWith('.md') || p.endsWith('.txt') || p.endsWith('.json')) return false;
-    if (p.endsWith('.yml') || p.endsWith('.yaml') || p.endsWith('.lock')) return false;
-    if (p.endsWith('.png') || p.endsWith('.jpg') || p.endsWith('.svg')) return false;
-    if (p.endsWith('.gitignore') || p.endsWith('dockerfile')) return false;
-    if (p.endsWith('.env') || p.endsWith('.config')) return false;
-
-    // ✅ Keep actual source code
-    return p.endsWith('.js') ||
-           p.endsWith('.ts') ||
-           p.endsWith('.py') ||
-           p.endsWith('.java') ||
-           p.endsWith('.cs') ||
-           p.endsWith('.php') ||
-           p.endsWith('.rb') ||
-           p.endsWith('.go') ||
-           p.endsWith('.jsx') ||
-           p.endsWith('.tsx');
-  })
-  .slice(0, 8);
-
-// ✅ fallback if not enough files found
-if (codeFiles.length < 5) {
-  codeFiles = tree.tree
-    .filter((f: any) =>
-      f.type === 'blob' &&
-      (
-        f.path.endsWith('.ts') ||
-        f.path.endsWith('.js')
-      ) &&
-      !f.path.includes('node_modules') &&
-      !f.path.includes('dist') &&
-      !f.path.includes('build')
-    );
-}
-
-// ✅ limit for performance
-codeFiles = codeFiles.slice(0, 8);
-
-// ✅ take files from DIFFERENT folders (not top only)
-codeFiles = codeFiles
-  .sort((a: any, b: any) => {
-    const priority = (p: string) => {
-      // ❌ Push test files to bottom
-      if (p.includes('test/') || p.startsWith('test')) return 99;
-      if (p.includes('spec/')) return 99;
-      
-      if (p.includes('/routes/')) return 0;
-      if (p.includes('/controllers/')) return 0;
-      if (p.includes('/services/')) return 1;
-      if (p.includes('/src/')) return 1;
-      if (p.includes('/bin/')) return 1;
-      if (p.includes('/app')) return 2;
-      if (p.includes('/lib/')) return 3;
-      return 5;
-    };
-    return priority(a.path) - priority(b.path);
-  })
-  .slice(0, 8);
-
-console.log("📂 FILES SELECTED:");
-codeFiles.forEach((f: any) => console.log("  →", f.path));
-
-    let allFindings: any[] = [];
-    let combinedCode = "";
-let validFileCount = 0;
-
-
-for (const file of codeFiles) {
-  try {
-    // ❌ HARD BLOCK test/ci/config files
-    const lp = file.path.toLowerCase();
-if (
-    lp.includes('test') ||
-    lp.includes('spec') ||
-    lp.includes('ci') ||
-    lp.includes('eslint') ||
-    lp.includes('prettier') ||
-    lp.includes('config') ||
-    lp.startsWith('.')) {
-  console.log("⛔ SKIPPING:", file.path);
-  continue;
-}
-
-    // ⏱️ Rate limit protection
-    await new Promise(r => setTimeout(r, 500));
-
-    
-const fileUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${file.path}`;
-const resFile = await fetch(`${environment.apiUrl}/api/github/proxy?url=${encodeURIComponent(fileUrl)}`);
-
-
-    if (!resFile.ok) continue;
-
-    const code = await resFile.text();
-    if (!code || code.trim().length < 50) continue;
-
-    combinedCode += code + "\n";
-    validFileCount++;
-
-    // ✅ Step 1: Try rule engine
-    const res = await firstValueFrom(
-this.agentApi.executeCodeReview(
-  code.slice(0, 2000),
-  file.path          // ✅ this enables backend filter
-)    );
-
-    const ruleFindings = (res?.findings || []).map((f: any) => ({
-      ...f,
-      file: file.path
-    }));
-
- // ✅ Always push rule findings
-allFindings.push(...ruleFindings);
-
-// ✅ Always run AI too (on top of rules)
-try {
-  const aiRes = await firstValueFrom(
-    this.aiService.codeReview(code.slice(0, 3000))
-  );
-  const aiFindings = (aiRes?.findings || []).map((f: any) => ({
-    ...f,
-    file: file.path
-  }));
-  allFindings.push(...aiFindings);
-} catch {
-  // AI failed, skip
-}
-  } catch {
-    continue;
-  }
-}
-console.log("ALL FINDINGS:", allFindings);
-console.log("FILE COUNT:", validFileCount);
-console.log("CODE LENGTH:", combinedCode.length);
-
-
-// ✅ ✅ ADD STEP 3 HERE
-if (allFindings.length > 0) {
-
-  const filteredFindings = allFindings.filter(f => f.category !== 'AI Error');
-
-  const r = this.buildCodeReviewUI(filteredFindings, combinedCode, validFileCount);
-
-  this.agentSvc.addMessage(id, this.thread(), {
-    role: 'ai',
-    content: `📁 Repo Review: ${repo}\n\n${r}`,
-    time: t
-  });
-
-  this.isTyping.set(false);
-  this.shouldScroll = true;
-  return;
-}
-// ✅ AI fallback if no findings
-this.aiService.codeReview(combinedCode.slice(0, 2000)).subscribe({
-  next: (res: any) => {
-
-    // ✅ DIRECTLY USE BACKEND FINDINGS
-    const aiFindings = (res?.findings || []).filter((f: any) => f.category !== 'AI Error');
-const r = this.buildCodeReviewUI(aiFindings, combinedCode, validFileCount);
-    console.log("AI FINDINGS:", aiFindings); // ✅ debug
-
-
-    this.agentSvc.addMessage(id, this.thread(), {
-      role: 'ai',
-      content: `📁 Repo Review: ${repo}\n\n${r}`,
-      time: t
-    });
-
-    this.isTyping.set(false);
-    this.shouldScroll = true;
-  },
-
-  error: () => {
-    this.agentSvc.addMessage(id, this.thread(), {
-      role: 'ai',
-      content: '⚠️ AI analysis failed',
-      time: t
-    });
-
-    this.isTyping.set(false);
-  }
-});// ✅ END handleRepoReview
-  }
- catch (e) {   // ✅ THIS WAS MISSING PROPERLY
-  this.agentSvc.addMessage(this.agentId(), this.thread(), {
-    role: 'ai',
-    content: '⚠️ Failed to fetch repo',
-    time: t
-  });
-
-  this.isTyping.set(false);
-}
-
-// ✅ CLOSE METHOD PROPERLY
-}
-
   async send() {
 
     const text = this.inputText.trim();
@@ -1092,9 +714,50 @@ this.agentSvc.addMessage(id, this.thread(), { role: 'user', content: text || '[F
 this.inputText = '';
 this.attachedFiles.set([]);
 this.shouldScroll = true;
-if (outbound.includes('github.com')) {
-    this.handleRepoReview(outbound);
-    return;
+const isGitHubRepo = /github\.com\/.+\/.+/.test(outbound);
+
+if (isGitHubRepo) {
+  console.log("✅ Repo trigger hit");
+  this.isTyping.set(true);
+
+  try {
+    const result = await this.codeReviewService.reviewRepo(outbound);
+    if (!result.fileCount) {
+  this.agentSvc.addMessage(id, this.thread(), {
+    role: 'ai',
+    content: '⚠️ No TypeScript/JavaScript files found in this repository.',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  });
+
+  this.isTyping.set(false);
+  this.shouldScroll = true;
+  return;
+}
+
+
+    const r = buildCodeReviewUI(
+      result.findings,
+      result.code,
+      result.fileCount
+    );
+
+    this.agentSvc.addMessage(id, this.thread(), {
+      role: 'ai',
+      content: `📁 Repo Review\n\n${r}`,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+
+  } catch {
+    this.agentSvc.addMessage(id, this.thread(), {
+      role: 'ai',
+      content: '⚠️ Repo review failed',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+
+  this.isTyping.set(false);
+  this.shouldScroll = true;
+  return;
 }
 
     // LIVE agent
@@ -1134,195 +797,49 @@ if (outbound.includes('github.com')) {
     // CODE REVIEW agent
 if (id === this.CODE_REVIEW_AGENT_ID) {
 
-const looksLikeCode =
-  outbound.includes('{') ||
-  outbound.includes('(') ||
-  outbound.includes(';') ||
-  outbound.toLowerCase().includes('function') ||
-  outbound.toLowerCase().includes('class');
+  const looksLikeCode =
+    outbound.includes('{') ||
+    outbound.includes('(') ||
+    outbound.includes(';') ||
+    outbound.toLowerCase().includes('function') ||
+    outbound.toLowerCase().includes('class');
 
-if (!looksLikeCode) {
-  const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  this.agentSvc.addMessage(id, this.thread(), {
-    role: 'ai',
-    content: '👋 Please paste actual code for review.',
-    time: t
-  });
-  return;
-}
+  if (!looksLikeCode) {
+    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    this.agentSvc.addMessage(id, this.thread(), {
+      role: 'ai',
+      content: '👋 Please paste actual code for review.',
+      time: t
+    });
+    return;
+  }
 
   this.isTyping.set(true);
 
-  // ✅ Quick security detection
-let manualFindings: any[] = [];
+  try {
+    const findings = await this.codeReviewService.reviewCode(outbound);
 
-if (outbound.includes('eval(')) {
-  manualFindings.push({
-    category: 'Security',
-    issue: 'Use of eval() is unsafe and can lead to code injection vulnerabilities.',
-    severity: 'critical'
-  });
-}
-
- this.agentApi.executeCodeReview(outbound).subscribe({
-  next: (res: any) => {
-
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const findings = [...manualFindings, ...(res?.findings || [])];
-    // ✅ RULE FLOW
-    // ✅ Always run AI on top of rules
-this.aiService.codeReview(outbound).subscribe({
-  next: (groqRes: any) => {
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const parsed = typeof groqRes === 'string' ? JSON.parse(groqRes) : groqRes;
-    const aiFindings = parsed?.findings || [];
-
-    // ✅ Combine rules + AI
-const allFindings = [...findings, ...aiFindings]
-  .filter(f => f.category !== 'AI Error');
-  const r = this.buildCodeReviewUI(allFindings, outbound);
+    const r = buildCodeReviewUI(findings, outbound);
 
     this.agentSvc.addMessage(id, this.thread(), {
       role: 'ai',
       content: r,
-      time: t
-    });
-    this.isTyping.set(false);
-    this.shouldScroll = true;
-  },
-  error: () => {
-    // AI failed — still show rule findings
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const r = this.buildCodeReviewUI(findings, outbound);
-    this.agentSvc.addMessage(id, this.thread(), {
-      role: 'ai',
-      content: r,
-      time: t
-    });
-    this.isTyping.set(false);
-    this.shouldScroll = true;
-  }
-});
-return;
-
-    // ✅ AI FLOW (INSIDE SAME BLOCK)
-    this.aiService.codeReview(outbound).subscribe({
-      next: (groqRes: any) => {
-
-        const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const parsed = typeof groqRes === 'string' ? JSON.parse(groqRes) : groqRes;
-        const reply = parsed?.choices?.[0]?.message?.content || "";
-
-      
-
-
-const rawLines = reply
-  ? reply.split('\n')
-      .map((s: string) => s.replace(/^[-*]\s*/, '').trim())
-      .filter((s: string) =>
-        s.length > 0 &&
-        !s.toLowerCase().includes('code review') &&
-        !s.toLowerCase().includes('here are')
-      )
-  : [];
-
-const suggestions: string[] = [];
-let current = '';
-
-// ✅ GROUP LINES
-for (const line of rawLines) {
-  if (
-    line.includes('**') &&
-    !line.toLowerCase().includes('alert')
-  ) {
-    if (current) suggestions.push(current.trim());
-    current = line;
-  } else {
-    current += ' ' + line;
-  }
-}
-if (current) suggestions.push(current.trim());
-
-// ✅ REMOVE USELESS HEADINGS
-const finalSuggestions = suggestions.filter((s: string) => {
-  const text = s.toLowerCase();
-
-  return !(
-    text.length < 40 &&
-    (text.includes('vulnerability') ||
-     text.includes('alert') ||
-     text.includes('issues'))
-  );
-});
-
-
-// ✅ NOW use finalSuggestions
-const aiFindings = finalSuggestions.map((s: string) => {
-  let severity = 'info';
-  const text = s.toLowerCase();
-
-  if (
-    (text.includes('found') && !text.includes('not found')) || // ✅ KEY FIX
-    text.includes('unsafe') ||
-    text.includes('vulnerabil') ||
-    text.includes('risk')
-  ) {
-    severity = 'critical';
-  } 
-  else if (
-    text.includes('issue') ||
-    text.includes('should') ||
-    text.includes('improve')
-  ) {
-    severity = 'warning';
-  }
-
-  return {
-    category: 'AI Insight',
-    issue: s,
-    severity
-  };
-});
-
-
-        const r = this.buildCodeReviewUI(aiFindings, outbound);
-
-        this.agentSvc.addMessage(id, this.thread(), {
-          role: 'ai',
-          content: r,
-          time: t
-        });
-
-        this.isTyping.set(false);
-        this.shouldScroll = true;
-      },
-
-      error: () => {
-        this.agentSvc.addMessage(id, this.thread(), {
-          role: 'ai',
-          content: '⚠️ AI error',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-
-        this.isTyping.set(false);
-      }
-    });
-
-  },
-
-  error: () => {
-    this.agentSvc.addMessage(id, this.thread(), {
-      role: 'ai',
-      content: '⚠️ Backend error',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
 
-    this.isTyping.set(false);
+  } catch {
+    this.agentSvc.addMessage(id, this.thread(), {
+      role: 'ai',
+      content: '⚠️ Code review failed',
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
   }
-});
-return;
+
+  this.isTyping.set(false);
+  this.shouldScroll = true;
+  return;
 }
+``
   
     // Other agents: mock
     this.isTyping.set(true);
