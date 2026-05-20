@@ -14,13 +14,7 @@ public static class CodeReviewEngine
             return EmptyResponse();
 
         // ✅ LIMIT ANALYSIS SIZE (VERY IMPORTANT)
- if (sourceCode.Length > 5000)
-{
-    var firstPart = sourceCode.Substring(0, 2500);
-    var lastPart = sourceCode.Substring(sourceCode.Length - 2500);
 
-    sourceCode = firstPart + "\n" + lastPart;
-}
 
 
         var lines = sourceCode.Split(new[] { "\n", "\r\n" }, StringSplitOptions.None);
@@ -35,6 +29,20 @@ CheckTypeSafety(sourceCode, language, findings);
         CheckAngularSpecific(sourceCode, findings);
         CheckTestingQuality(sourceCode, findings);
         CheckCodeStructure(sourceCode, lines, findings);
+       
+
+        // ✅ Fill file name + line number
+var normalized = sourceCode.Replace("\r\n", "\n");
+
+foreach (var finding in findings)
+{
+    // Default file name (you can improve later)
+    if (string.IsNullOrWhiteSpace(finding.FileName))
+       
+
+    if (finding.LineNumber == 0)
+        finding.LineNumber = GuessLineNumber(normalized, finding.PatternFound);
+}
 
         int critical = findings.Count(f => f.Severity == "critical");
         int warnings = findings.Count(f => f.Severity == "warning");
@@ -140,7 +148,7 @@ private static void CheckTypeSafety(string src, string language, List<Finding> f
             f.Add(MakeFinding("Type Safety", "warning",
                 "any type used " + anyCount + " time(s) -- weakens type safety",
                 "Replace with proper interfaces or generics",
-                "any x " + anyCount));
+                 ": any"));
 
         // Rule 10
         
@@ -470,7 +478,7 @@ if (src.Contains("console.log") &&
     f.Add(MakeFinding("Security", "critical",
         "Sensitive data logged: Passwords, tokens, or financial data found in console.log",
         "Never log sensitive information. Use a secure logging framework with redaction",
-        "console.log with sensitive data"));
+       "console.log("));
 }
 
 // 🔴 Hardcoded API Keys (pattern-based) - FIXED to allow underscore
@@ -580,7 +588,7 @@ foreach (var line in lines)
             f.Add(MakeFinding("Angular-Specific", "warning",
                 "Component not using standalone: true (Angular 17+ recommended)",
                 "Add standalone: true to @Component decorator",
-                "standalone missing"));
+                "@Component"));
 
         // Rule 38
         if (src.Contains("constructor(private") || src.Contains("constructor( private"))
@@ -817,4 +825,20 @@ foreach (var line in lines)
             Findings = new List<Finding>()
         };
     }
+    private static int GuessLineNumber(string src, string pattern)
+{
+    if (string.IsNullOrWhiteSpace(pattern))
+        return 0;
+
+    int idx = src.IndexOf(pattern, StringComparison.Ordinal);
+    if (idx < 0)
+        return 0;
+
+    int line = 1;
+    for (int i = 0; i < idx; i++)
+        if (src[i] == '\n') line++;
+
+    return line;
+}
+
 }

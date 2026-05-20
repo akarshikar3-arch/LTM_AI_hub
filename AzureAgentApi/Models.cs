@@ -38,4 +38,7 @@ public class Finding
     public string Issue { get; set; } = "";
     public string Suggestion { get; set; } = "";
     public string PatternFound { get; set; } = "";
+    public string FileName { get; set; } = "";
+    public int LineNumber { get; set; }
+
 }

@@ -137,7 +137,10 @@ let codeFiles = tree.tree
 
           // ✅ rules
           const res = await firstValueFrom(
-            this.agentApi.executeCodeReview(code.slice(0, 2000))
+           this.agentApi.executeCodeReviewWithPath(
+  code.slice(0, 2000),
+  file.path   // ✅ PASS FILE PATH
+)
           );
 
           const ruleFindings = res?.findings || [];

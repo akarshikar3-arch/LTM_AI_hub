@@ -28,6 +28,14 @@ export class AgentApiService {
   );
 }
 
+executeCodeReviewWithPath(code: string, filePath: string) {
+  return this.http.post<any>(
+    `${environment.apiUrl}/api/agent/execute`,
+    code,
+    { headers: { 'x-file-path': filePath } }
+  );
+}
+
 
   healthCheck(): Observable<any> {
     return this.http.get(this.apiUrl + '/health');

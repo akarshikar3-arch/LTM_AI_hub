@@ -58,20 +58,39 @@ if (code.Length > 200000)
 }
 
 // ✅ Only then analyze
+var rawPath = request.Headers["x-file-path"].ToString();
+
+var fileName = string.IsNullOrWhiteSpace(rawPath)
+    ? "Unknown"
+    : System.IO.Path.GetFileName(rawPath);
+
 var result = CodeReviewEngine.Analyze(code);
+
+// ✅ attach filename to each finding
+foreach (var f in result.Findings)
+{
+    if (string.IsNullOrEmpty(f.FileName))
+        f.FileName = fileName;
+}
 
 
     Console.WriteLine("🔧 FINDINGS: " + result.Findings.Count);
 
-    return Results.Ok(new
+return Results.Ok(new
+{
+    serverStamp = "SERVER-LOC-STAMP ✅",   // ✅ ADD THIS LINE
+
+    findings = result.Findings.Select(f => new
     {
-        findings = result.Findings.Select(f => new
-        {
-            category = f.Category,
-            issue = f.Issue,
-            severity = f.Severity
-        })
-    });
+        category = f.Category,
+        issue = f.Issue,
+        severity = f.Severity,
+
+        fileName = f.FileName,
+        lineNumber = f.LineNumber
+    })
+});
+
 });
 
 app.MapPost("/api/ai/code-review", async (HttpClient http, HttpRequest request) =>

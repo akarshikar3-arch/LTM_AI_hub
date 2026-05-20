@@ -60,14 +60,25 @@ export function buildCodeReviewUI(
       const si = f.severity === 'critical' ? '🔴' : f.severity === 'warning' ? '🟠' : '🔵';
 
       h += `<div class="cr-card ${cardCls}">
-        <div class="cr-card-cat">${si} ${f.category}</div>
-        ${f.file ? `<div style="font-size:0.75rem; opacity:0.6;">📄 ${f.file}</div>` : ''}
-        <div class="cr-card-issue">${f.issue}</div>
-      </div>`;
+  <div class="cr-card-cat">${si} ${f.category}</div>
+ <div class="cr-card-issue">${f.issue}</div>
+
+<div class="cr-card-loc">
+  📄 ${f.fileName || f.FileName || f.file || 'Unknown file'}
+  ${(f.lineNumber || f.LineNumber) ? ` : Line ${f.lineNumber || f.LineNumber}` : ''}
+</div>
+
+  
+</div>`;
+
     }
 
     h += `</div></details>`;
     return h;
+
+
+    console.log(mergedFindings);
+
   };
 
   const criticals = mergedFindings.filter(f => f.severity === 'critical');

@@ -465,6 +465,12 @@ function getNextResponse(agentId: number): string {
     .cr-card-cat{font-size:11px;font-weight:700;color:#71717a;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
     .cr-card-issue{font-size:12.5px;font-weight:600;color:#111;line-height:1.5}
     .cr-card-fix{font-size:11.5px;color:#71717a;margin-top:4px}
+    .cr-card-loc {
+  font-size: 11px;
+  color: #71717a;
+  margin-top: 4px;
+  font-weight: 600;
+}
     .cr-sev-tag{font-size:9px;font-weight:800;padding:1px 6px;border-radius:4px;text-transform:uppercase;color:#fff}
     .cr-sev-critical{background:#dc2626}
     .cr-sev-warning{background:#ea580c}
